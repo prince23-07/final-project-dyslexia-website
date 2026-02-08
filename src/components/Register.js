@@ -1,6 +1,7 @@
+// components/Register.js - CORRECTED VERSION
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import axios from 'axios';
 import './Auth.css';
 
 const Register = () => {
@@ -14,7 +15,6 @@ const Register = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -31,19 +31,20 @@ const Register = () => {
     setMessage('');
 
     try {
-      const result = await register(formData);
-      if (result.success) {
+      const response = await axios.post('http://localhost:5000/api/register', formData);
+      
+      if (response.status === 201) {
         if (formData.user_type === 'child') {
           setMessage(`
             🎉 Child Account Created Successfully!
 
             👤 Your Child Login Details:
-            • Username: ${result.data.child_username}
-            • Password: ${result.data.child_password}
+            • Username: ${response.data.child_username}
+            • Password: ${response.data.child_password}
 
             👨‍👩‍👧‍👦 Parent Monitoring Account (Auto-generated):
-            • Parent ID: ${result.data.parent_username}
-            • Password: ${result.data.parent_password}
+            • Parent ID: ${response.data.parent_username}
+            • Password: ${response.data.parent_password}
 
             📝 Important:
             Parents can use the Parent ID and Password above to login 
@@ -66,11 +67,9 @@ const Register = () => {
         setTimeout(() => {
           navigate('/login');
         }, 8000);
-      } else {
-        setError(result.error);
       }
     } catch (error) {
-      setError('Registration failed. Please try again.');
+      setError(error.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }

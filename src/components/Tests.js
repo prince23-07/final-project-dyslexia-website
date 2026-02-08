@@ -1,34 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import './Tests.css';
 
 const Tests = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('speech'); // 'speech' or 'listening'
+  const [activeTab, setActiveTab] = useState('speech');
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [spokenText, setSpokenText] = useState('');
   const [typedText, setTypedText] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [currentDifficulty, setCurrentDifficulty] = useState(1.0);
+  const [adaptiveContent, setAdaptiveContent] = useState([]);
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
 
-  // Sample test sentences
-  const speechSentences = [
-    "The quick brown fox jumps over the lazy dog",
-    "She sells seashells by the seashore",
-    "Peter Piper picked a peck of pickled peppers",
-    "How much wood would a woodchuck chuck"
-  ];
+  // Fetch adaptive content based on difficulty
+  useEffect(() => {
+    if (user && user.user_type === 'child') {
+      fetchAdaptiveContent();
+    }
+  }, [user, activeTab]);
 
-  const listeningSentences = [
-    "Twenty when you hear the beep sound",
-    "The cat sat on the mat near the window",
-    "My favorite color is blue like the ocean",
-    "Please pass the salt and pepper to me"
-  ];
+  const fetchAdaptiveContent = async () => {
+    try {
+      const contentType = activeTab === 'speech' ? 'speech_test' : 'listening_test';
+      const response = await axios.get(`http://localhost:5000/api/get-adaptive-content/${contentType}`, {
+        params: {
+          user_id: user.user_id,
+          difficulty: currentDifficulty
+        }
+      });
+      
+      setAdaptiveContent(response.data.content);
+      setCurrentDifficulty(response.data.difficulty_level);
+    } catch (error) {
+      console.error('Error fetching adaptive content:', error);
+      // Fallback content
+      const fallbackContent = activeTab === 'speech' 
+        ? ["The cat sleeps", "We eat food", "Birds fly high"]
+        : ["Hello world", "Good morning", "How are you"];
+      setAdaptiveContent(fallbackContent);
+    }
+  };
 
-  const [currentSentence, setCurrentSentence] = useState(speechSentences[0]);
+  const getCurrentSentence = () => {
+    if (adaptiveContent.length > 0) {
+      return adaptiveContent[currentSentenceIndex % adaptiveContent.length];
+    }
+    return activeTab === 'speech' 
+      ? "The quick brown fox jumps over the lazy dog"
+      : "Please type what you hear";
+  };
 
   const startSpeechTest = () => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -67,19 +91,29 @@ const Tests = () => {
 
     setLoading(true);
     try {
+      const originalText = getCurrentSentence();
       const response = await axios.post('http://localhost:5000/api/speech-test', {
         user_id: user.user_id,
         spoken_text: spokenText,
-        original_text: currentSentence,
-        time_taken: 30 // Example time
+        original_text: originalText,
+        time_spent: 30
       });
 
       setResult({
         type: 'speech',
         accuracy: response.data.accuracy,
         score: response.data.score,
-        wordsPerMinute: response.data.words_per_minute
+        wordsPerMinute: response.data.words_per_minute,
+        newDifficulty: response.data.new_difficulty
       });
+      
+      // Update difficulty
+      if (response.data.new_difficulty) {
+        setCurrentDifficulty(response.data.new_difficulty);
+      }
+      
+      // Move to next sentence
+      setCurrentSentenceIndex(prev => prev + 1);
     } catch (error) {
       console.error('Error submitting speech test:', error);
       alert('Failed to submit test. Please try again.');
@@ -91,8 +125,9 @@ const Tests = () => {
   const playListeningAudio = () => {
     if ('speechSynthesis' in window) {
       setIsPlaying(true);
-      const utterance = new SpeechSynthesisUtterance(currentSentence);
-      utterance.rate = 0.8; // Slower for better comprehension
+      const sentence = getCurrentSentence();
+      const utterance = new SpeechSynthesisUtterance(sentence);
+      utterance.rate = 0.8;
       
       utterance.onend = () => {
         setIsPlaying(false);
@@ -112,17 +147,27 @@ const Tests = () => {
 
     setLoading(true);
     try {
+      const originalText = getCurrentSentence();
       const response = await axios.post('http://localhost:5000/api/listening-test', {
         user_id: user.user_id,
         typed_text: typedText,
-        original_text: currentSentence
+        original_text: originalText
       });
 
       setResult({
         type: 'listening',
         accuracy: response.data.accuracy,
-        score: response.data.score
+        score: response.data.score,
+        newDifficulty: response.data.new_difficulty
       });
+      
+      // Update difficulty
+      if (response.data.new_difficulty) {
+        setCurrentDifficulty(response.data.new_difficulty);
+      }
+      
+      // Move to next sentence
+      setCurrentSentenceIndex(prev => prev + 1);
     } catch (error) {
       console.error('Error submitting listening test:', error);
       alert('Failed to submit test. Please try again.');
@@ -131,21 +176,36 @@ const Tests = () => {
     }
   };
 
-  const getNewSentence = () => {
-    const sentences = activeTab === 'speech' ? speechSentences : listeningSentences;
-    const currentIndex = sentences.indexOf(currentSentence);
-    const nextIndex = (currentIndex + 1) % sentences.length;
-    setCurrentSentence(sentences[nextIndex]);
+  const nextSentence = () => {
+    setCurrentSentenceIndex(prev => prev + 1);
     setResult(null);
     setSpokenText('');
     setTypedText('');
   };
 
+  const getDifficultyLabel = (difficulty) => {
+    if (difficulty < 1.3) return 'Beginner';
+    if (difficulty < 1.8) return 'Easy';
+    if (difficulty < 2.3) return 'Medium';
+    if (difficulty < 2.8) return 'Hard';
+    return 'Expert';
+  };
+
   return (
     <div className="tests-container">
       <div className="tests-header">
-        <h1>🧪 Tests</h1>
-        <p>Practice your speech and listening skills</p>
+        <h1>🧪 Adaptive Tests</h1>
+        <p>Practice your speech and listening skills at your level</p>
+        <div className="difficulty-indicator">
+          <span className="difficulty-label">Current Level:</span>
+          <span className="difficulty-value">{getDifficultyLabel(currentDifficulty)}</span>
+          <div className="difficulty-bar">
+            <div 
+              className="difficulty-fill" 
+              style={{ width: `${(currentDifficulty - 0.5) / 2.5 * 100}%` }}
+            ></div>
+          </div>
+        </div>
       </div>
 
       <div className="tests-tabs">
@@ -153,7 +213,7 @@ const Tests = () => {
           className={`tab-btn ${activeTab === 'speech' ? 'active' : ''}`}
           onClick={() => {
             setActiveTab('speech');
-            setCurrentSentence(speechSentences[0]);
+            setCurrentSentenceIndex(0);
             setResult(null);
           }}
         >
@@ -163,7 +223,7 @@ const Tests = () => {
           className={`tab-btn ${activeTab === 'listening' ? 'active' : ''}`}
           onClick={() => {
             setActiveTab('listening');
-            setCurrentSentence(listeningSentences[0]);
+            setCurrentSentenceIndex(0);
             setResult(null);
           }}
         >
@@ -187,14 +247,12 @@ const Tests = () => {
             <div className="sentence-display">
               <h4>Read this sentence:</h4>
               <div className="sentence-box">
-                "{currentSentence}"
+                "{getCurrentSentence()}"
               </div>
-              <button 
-                className="new-sentence-btn"
-                onClick={getNewSentence}
-              >
-                🔄 New Sentence
-              </button>
+              <div className="difficulty-info">
+                Level: {getDifficultyLabel(currentDifficulty)} | 
+                Sentence {currentSentenceIndex + 1} of {adaptiveContent.length}
+              </div>
             </div>
 
             <div className="recording-section">
@@ -254,16 +312,11 @@ const Tests = () => {
                   rows="4"
                 />
               </div>
-            </div>
-
-            <div className="hint-section">
-              <button 
-                className="new-sentence-btn"
-                onClick={getNewSentence}
-              >
-                🔄 New Sentence
-              </button>
-              <p className="hint-text">Can't hear clearly? Try again or request a new sentence.</p>
+              
+              <div className="difficulty-info">
+                Level: {getDifficultyLabel(currentDifficulty)} | 
+                Sentence {currentSentenceIndex + 1} of {adaptiveContent.length}
+              </div>
             </div>
 
             <button 
@@ -294,19 +347,18 @@ const Tests = () => {
                   <span className="result-value">{result.wordsPerMinute.toFixed(1)}</span>
                 </div>
               )}
+              {result.newDifficulty && (
+                <div className="result-item">
+                  <span className="result-label">New Level:</span>
+                  <span className="result-value">{getDifficultyLabel(result.newDifficulty)}</span>
+                </div>
+              )}
             </div>
             <button 
               className="try-again-btn"
-              onClick={() => {
-                setResult(null);
-                if (activeTab === 'speech') {
-                  setSpokenText('');
-                } else {
-                  setTypedText('');
-                }
-              }}
+              onClick={nextSentence}
             >
-              Try Another Test
+              Next Sentence
             </button>
           </div>
         )}

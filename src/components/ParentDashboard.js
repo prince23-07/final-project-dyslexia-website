@@ -26,10 +26,17 @@ const ParentDashboard = () => {
   const fetchChildrenData = async () => {
     try {
       const response = await axios.get(`http://localhost:5000/api/parent-dashboard/${user.user_id}`);
-      setChildrenData(response.data.children || []);
+      console.log('Parent dashboard response:', response.data);
+      
+      if (response.data && response.data.children) {
+        setChildrenData(response.data.children);
+      } else {
+        setChildrenData([]);
+      }
     } catch (error) {
-      setError('Failed to load children data');
       console.error('Error fetching children data:', error);
+      setError('Failed to load children data. Please try again.');
+      setChildrenData([]);
     } finally {
       setLoading(false);
     }
@@ -80,9 +87,28 @@ const ParentDashboard = () => {
     }
   };
 
+  const getDifficultyLabel = (difficulty) => {
+    if (!difficulty) return 'Not set';
+    if (difficulty < 1.3) return 'Beginner';
+    if (difficulty < 1.8) return 'Easy';
+    if (difficulty < 2.3) return 'Medium';
+    if (difficulty < 2.8) return 'Hard';
+    return 'Expert';
+  };
+
+  const formatTime = (minutes) => {
+    if (!minutes || minutes === 0) return '0m';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  };
+
   const getScoreDisplay = (score, type) => {
     if (score === 0) return 'Not attempted';
-    if (type === 'test') return `${score}%`;
+    if (type === 'test') return `${score.toFixed(1)}%`;
     return score;
   };
 
@@ -90,14 +116,6 @@ const ParentDashboard = () => {
     return (
       <div className="parent-dashboard-container">
         <div className="loading">Loading children's progress...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="parent-dashboard-container">
-        <div className="error-message">{error}</div>
       </div>
     );
   }
@@ -183,7 +201,7 @@ const ParentDashboard = () => {
         </div>
       )}
 
-      {/* Parent Account Information Section */}
+      {/* Parent Account Information */}
       {showParentInfo && (
         <div className="parent-info-section">
           <div className="parent-info-card">
@@ -224,19 +242,58 @@ const ParentDashboard = () => {
         </div>
       )}
 
-      {childrenData.length === 0 ? (
+      {/* Children Data Display */}
+      {error ? (
+        <div className="error-message">{error}</div>
+      ) : childrenData.length === 0 ? (
         <div className="no-children">
           <h3>No Children Registered</h3>
-          <p>Your children need to register using your Parent ID: <strong>{user.username}</strong></p>
-          <p>Tell them to enter this ID when they create their account.</p>
+          <p>Your Parent ID: <strong>{user.username}</strong></p>
+          <p>Children need to register and enter this Parent ID when creating their account.</p>
+          <p>Once a child registers, their progress will appear here automatically.</p>
         </div>
       ) : (
         <div className="children-list">
           {childrenData.map((child) => (
             <div key={child.child_id} className="child-card">
               <div className="child-header">
-                <h3>{child.child_name}</h3>
-                <span className="child-age">Age: {child.child_age}</span>
+                <div>
+                  <h3>{child.child_name}</h3>
+                  <p className="child-age">Age: {child.child_age || 'Not specified'}</p>
+                  <p className="child-email">Email: {child.child_email}</p>
+                </div>
+                <div className="child-stats">
+                  <div className="stat-item">
+                    <span className="stat-label">Level</span>
+                    <span className="stat-value">{getDifficultyLabel(child.current_difficulty)}</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Streak</span>
+                    <span className="stat-value">{child.streak || 0} days</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Learning Summary */}
+              <div className="learning-summary">
+                <div className="summary-grid">
+                  <div className="summary-card">
+                    <span className="summary-label">Total Learning</span>
+                    <span className="summary-value">{formatTime(child.total_learning_time)}</span>
+                  </div>
+                  <div className="summary-card">
+                    <span className="summary-label">Today</span>
+                    <span className="summary-value">{formatTime(child.today_learning)}</span>
+                  </div>
+                  <div className="summary-card">
+                    <span className="summary-label">Tests Completed</span>
+                    <span className="summary-value">{child.total_tests || 0}</span>
+                  </div>
+                  <div className="summary-card">
+                    <span className="summary-label">Games Played</span>
+                    <span className="summary-value">{child.total_games || 0}</span>
+                  </div>
+                </div>
               </div>
 
               {/* Highest Scores */}
@@ -246,45 +303,33 @@ const ParentDashboard = () => {
                   <div className="score-item">
                     <span>Speech Test</span>
                     <span className="score-value">
-                      {getScoreDisplay(child.highest_scores.speech_test, 'test')}
+                      {getScoreDisplay(child.highest_scores?.speech_test, 'test')}
                     </span>
                   </div>
                   <div className="score-item">
                     <span>Listening Test</span>
                     <span className="score-value">
-                      {getScoreDisplay(child.highest_scores.listening_test, 'test')}
+                      {getScoreDisplay(child.highest_scores?.listening_test, 'test')}
                     </span>
                   </div>
                   <div className="score-item">
                     <span>Word Jumble</span>
                     <span className="score-value">
-                      {getScoreDisplay(child.highest_scores.word_jumble, 'game')}
+                      {getScoreDisplay(child.highest_scores?.word_jumble, 'game')}
                     </span>
                   </div>
                   <div className="score-item">
                     <span>Memory Match</span>
                     <span className="score-value">
-                      {getScoreDisplay(child.highest_scores.memory_match, 'game')}
+                      {getScoreDisplay(child.highest_scores?.memory_match, 'game')}
                     </span>
                   </div>
                   <div className="score-item">
                     <span>Spelling Bee</span>
                     <span className="score-value">
-                      {getScoreDisplay(child.highest_scores.spelling_bee, 'game')}
+                      {getScoreDisplay(child.highest_scores?.spelling_bee, 'game')}
                     </span>
                   </div>
-                </div>
-              </div>
-
-              {/* Activity Summary */}
-              <div className="activity-summary">
-                <div className="summary-item">
-                  <span className="summary-label">Total Tests</span>
-                  <span className="summary-value">{child.total_tests}</span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Total Games</span>
-                  <span className="summary-value">{child.total_games}</span>
                 </div>
               </div>
 
@@ -294,13 +339,14 @@ const ParentDashboard = () => {
                 
                 <div className="activity-tabs">
                   <div className="activity-tab">
-                    <h5>Recent Tests ({child.recent_tests.length})</h5>
-                    {child.recent_tests.length > 0 ? (
+                    <h5>Recent Tests ({child.recent_tests?.length || 0})</h5>
+                    {child.recent_tests && child.recent_tests.length > 0 ? (
                       <div className="activity-list">
-                        {child.recent_tests.map((test, index) => (
+                        {child.recent_tests.slice(0, 5).map((test, index) => (
                           <div key={index} className="activity-item">
                             <span className="activity-type">{test.test_type}</span>
-                            <span className="activity-score">{test.score}%</span>
+                            <span className="activity-score">{test.score.toFixed(1)}%</span>
+                            <span className="activity-level">Level: {getDifficultyLabel(test.difficulty)}</span>
                             <span className="activity-date">
                               {new Date(test.date).toLocaleDateString()}
                             </span>
@@ -313,14 +359,14 @@ const ParentDashboard = () => {
                   </div>
 
                   <div className="activity-tab">
-                    <h5>Recent Games ({child.recent_games.length})</h5>
-                    {child.recent_games.length > 0 ? (
+                    <h5>Recent Games ({child.recent_games?.length || 0})</h5>
+                    {child.recent_games && child.recent_games.length > 0 ? (
                       <div className="activity-list">
-                        {child.recent_games.map((game, index) => (
+                        {child.recent_games.slice(0, 5).map((game, index) => (
                           <div key={index} className="activity-item">
-                            <span className="activity-type">{game.game_type.replace('_', ' ').toUpperCase()}</span>
+                            <span className="activity-type">{game.game_type.replace('_', ' ')}</span>
                             <span className="activity-score">Score: {game.score}</span>
-                            <span className="activity-level">Level: {game.level}</span>
+                            <span className="activity-level">Level: {getDifficultyLabel(game.difficulty)}</span>
                             <span className="activity-date">
                               {new Date(game.date).toLocaleDateString()}
                             </span>
@@ -332,6 +378,11 @@ const ParentDashboard = () => {
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* Last Active */}
+              <div className="last-active">
+                <p><strong>Last Active:</strong> {child.last_active ? new Date(child.last_active).toLocaleString() : 'Never'}</p>
               </div>
             </div>
           ))}

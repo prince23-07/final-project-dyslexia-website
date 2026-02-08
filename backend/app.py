@@ -7,7 +7,10 @@ import numpy as np
 import os
 import secrets
 import time
+import json
+import pickle
 from collections import defaultdict
+import random
 
 app = Flask(__name__)
 CORS(app)
@@ -23,21 +26,28 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
-    user_type = db.Column(db.String(20), nullable=False)  # 'parent' or 'child'
+    user_type = db.Column(db.String(20), nullable=False)
     parent_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     age = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_active = db.Column(db.DateTime, default=datetime.utcnow)
-    total_learning_time = db.Column(db.Integer, default=0)  # in minutes
+    total_learning_time = db.Column(db.Integer, default=0)
+    current_difficulty = db.Column(db.Float, default=1.0)
+    performance_history = db.Column(db.Text, default='[]')
+    
+    children = db.relationship('User', 
+                              backref=db.backref('parent', remote_side=[id]),
+                              lazy=True)
 
 class TestResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    test_type = db.Column(db.String(50), nullable=False)  # 'speech' or 'listening'
+    test_type = db.Column(db.String(50), nullable=False)
     score = db.Column(db.Float, nullable=False)
     accuracy = db.Column(db.Float, nullable=False)
     words_per_minute = db.Column(db.Float, nullable=True)
-    time_spent = db.Column(db.Integer, default=0)  # in seconds
+    time_spent = db.Column(db.Integer, default=0)
+    difficulty_level = db.Column(db.Float, default=1.0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class GameScore(db.Model):
@@ -47,42 +57,109 @@ class GameScore(db.Model):
     score = db.Column(db.Integer, nullable=False)
     level = db.Column(db.Integer, nullable=False)
     time_taken = db.Column(db.Float, nullable=True)
-    time_spent = db.Column(db.Integer, default=0)  # in seconds
+    time_spent = db.Column(db.Integer, default=0)
+    difficulty_level = db.Column(db.Float, default=1.0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class LearningSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    session_type = db.Column(db.String(50), nullable=False)  # 'test' or 'game'
-    activity_id = db.Column(db.Integer, nullable=False)  # test_result_id or game_score_id
-    time_spent = db.Column(db.Integer, nullable=False)  # in seconds
+    session_type = db.Column(db.String(50), nullable=False)
+    activity_id = db.Column(db.Integer, nullable=False)
+    time_spent = db.Column(db.Integer, nullable=False)
     date = db.Column(db.Date, nullable=False, default=date.today)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# Simple rule-based dyslexia prediction
-def predict_dyslexia(speech_accuracy, listening_accuracy, words_per_minute):
-    score = 0
+# Check if scikit-learn is available
+try:
+    from sklearn.svm import SVC
+    from sklearn.preprocessing import StandardScaler
+    ML_AVAILABLE = True
+    print("✓ ML Libraries Available")
     
-    if speech_accuracy < 0.5:
-        score += 0.4
-    elif speech_accuracy < 0.7:
-        score += 0.2
+    class AdaptiveDifficultySystem:
+        def __init__(self):
+            self.model_path = 'difficulty_model.pkl'
+            self.model = self.load_or_create_model()
+        
+        def load_or_create_model(self):
+            if os.path.exists(self.model_path):
+                with open(self.model_path, 'rb') as f:
+                    return pickle.load(f)
+            else:
+                # Create simple initial model
+                model = SVC(kernel='linear', probability=True)
+                # Train with dummy data
+                X = np.array([[0.3, 0.2], [0.7, 0.1], [0.5, 0.0], [0.8, 0.3]])
+                y = np.array([0, 1, 0, 1])
+                model.fit(X, y)
+                self.save_model(model)
+                return model
+        
+        def save_model(self, model):
+            with open(self.model_path, 'wb') as f:
+                pickle.dump(model, f)
+        
+        def predict_adjustment(self, current_score, recent_trend):
+            try:
+                features = np.array([[current_score, recent_trend]])
+                proba = self.model.predict_proba(features)[0]
+                
+                if proba[1] > 0.65:
+                    return 1  # Increase
+                elif proba[0] > 0.65:
+                    return 0  # Decrease
+                else:
+                    return -1  # Maintain
+            except:
+                # Fallback to rule-based
+                if current_score > 0.75:
+                    return 1
+                elif current_score < 0.45:
+                    return 0
+                return -1
+        
+        def update_model(self, X, y):
+            try:
+                self.model.fit(X, y)
+                self.save_model(self.model)
+            except:
+                pass
     
-    if listening_accuracy < 0.5:
-        score += 0.4
-    elif listening_accuracy < 0.7:
-        score += 0.2
+    difficulty_system = AdaptiveDifficultySystem()
     
-    if words_per_minute < 20:
-        score += 0.2
-    elif words_per_minute < 30:
-        score += 0.1
+except ImportError:
+    ML_AVAILABLE = False
+    print("⚠ ML Libraries Not Available - Using Rule-Based System")
     
-    return min(score, 1.0)
+    class AdaptiveDifficultySystem:
+        def predict_adjustment(self, current_score, recent_trend):
+            if current_score > 0.75:
+                return 1
+            elif current_score < 0.45:
+                return 0
+            return -1
+        
+        def update_model(self, X, y):
+            pass
+    
+    difficulty_system = AdaptiveDifficultySystem()
+
+# Initialize database
+with app.app_context():
+    db.create_all()
+
+# Helper functions
+def calculate_new_difficulty(current_difficulty, adjustment, score):
+    if adjustment == 1:  # Increase
+        increase = 0.15 if score > 0.8 else 0.1
+        return min(3.0, current_difficulty + increase)
+    elif adjustment == 0:  # Decrease
+        decrease = 0.15 if score < 0.4 else 0.1
+        return max(0.5, current_difficulty - decrease)
+    return current_difficulty
 
 # Routes
-
-# Authentication Routes
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
@@ -121,7 +198,7 @@ def register():
                 parent_id = parent_user.id
             except Exception as e:
                 db.session.rollback()
-                return jsonify({'error': 'Failed to create parent account: ' + str(e)}), 400
+                return jsonify({'error': f'Failed to create parent account: {str(e)}'}), 400
         else:
             parent_id = existing_parent.id
         
@@ -132,7 +209,9 @@ def register():
             password_hash=hashed_password,
             user_type='child',
             parent_id=parent_id,
-            age=data.get('age')
+            age=data.get('age'),
+            current_difficulty=1.0,
+            performance_history='[]'
         )
     else:
         hashed_password = generate_password_hash(data['password'])
@@ -163,7 +242,7 @@ def register():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Registration failed: ' + str(e)}), 400
+        return jsonify({'error': f'Registration failed: {str(e)}'}), 400
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -179,62 +258,78 @@ def login():
             'user_id': user.id,
             'user_type': user.user_type,
             'username': user.username,
-            'email': user.email
+            'email': user.email,
+            'current_difficulty': user.current_difficulty
         }), 200
     else:
         return jsonify({'error': 'Invalid credentials'}), 401
 
-# Password Management Routes
-@app.route('/api/forgot-password', methods=['POST'])
-def forgot_password():
+@app.route('/api/update-difficulty', methods=['POST'])
+def update_difficulty():
     data = request.json
-    email = data.get('email')
+    user_id = data['user_id']
+    score = data['score']
     
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({'error': 'Email not found'}), 404
-    
-    reset_token = secrets.token_urlsafe(32)
-    
-    return jsonify({
-        'message': 'Password reset instructions sent', 
-        'reset_token': reset_token
-    }), 200
-
-@app.route('/api/reset-password', methods=['POST'])
-def reset_password():
-    data = request.json
-    token = data.get('token')
-    new_password = data.get('new_password')
-    
-    user = User.query.first()
-    if user:
-        user.password_hash = generate_password_hash(new_password)
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        history = json.loads(user.performance_history or '[]')
+        
+        # Calculate trend
+        recent_scores = [h['score'] for h in history[-3:]] if len(history) >= 3 else [0.5]
+        recent_trend = score - np.mean(recent_scores) if recent_scores else 0
+        
+        # Predict adjustment using ML
+        adjustment = difficulty_system.predict_adjustment(score, recent_trend)
+        
+        # Calculate new difficulty
+        new_difficulty = calculate_new_difficulty(user.current_difficulty, adjustment, score)
+        
+        # Update user
+        user.current_difficulty = new_difficulty
+        
+        # Add to history
+        history.append({
+            'timestamp': datetime.utcnow().isoformat(),
+            'score': score,
+            'difficulty': new_difficulty
+        })
+        
+        if len(history) > 10:
+            history = history[-10:]
+        
+        user.performance_history = json.dumps(history)
+        
+        # Update ML model if we have enough data
+        if ML_AVAILABLE and len(history) >= 4:
+            X = []
+            y = []
+            for i in range(len(history) - 1):
+                if i + 1 < len(history):
+                    prev_score = history[i]['score']
+                    next_difficulty = history[i + 1]['difficulty']
+                    current_difficulty = history[i]['difficulty']
+                    
+                    trend = next_difficulty - current_difficulty
+                    X.append([prev_score, 0])  # Simple features
+                    y.append(1 if trend > 0 else 0)
+            
+            if len(X) > 0:
+                difficulty_system.update_model(np.array(X), np.array(y))
+        
         db.session.commit()
-        return jsonify({'message': 'Password reset successful'}), 200
-    
-    return jsonify({'error': 'Invalid token'}), 400
+        
+        return jsonify({
+            'new_difficulty': new_difficulty,
+            'adjustment': adjustment,
+            'ml_available': ML_AVAILABLE
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/change-password', methods=['POST'])
-def change_password():
-    data = request.json
-    user_id = data.get('user_id')
-    current_password = data.get('current_password')
-    new_password = data.get('new_password')
-    
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    
-    if not check_password_hash(user.password_hash, current_password):
-        return jsonify({'error': 'Current password is incorrect'}), 400
-    
-    user.password_hash = generate_password_hash(new_password)
-    db.session.commit()
-    
-    return jsonify({'message': 'Password changed successfully'}), 200
-
-# Test Routes
 @app.route('/api/speech-test', methods=['POST'])
 def speech_test():
     try:
@@ -242,49 +337,62 @@ def speech_test():
         user_id = data['user_id']
         spoken_text = data['spoken_text']
         original_text = data['original_text']
-        time_spent = data.get('time_spent', 30)  # in seconds
         
+        user = User.query.get(user_id)
+        current_difficulty = user.current_difficulty if user else 1.0
+        
+        # Calculate accuracy
         original_words = original_text.lower().split()
         spoken_words = spoken_text.lower().split()
         
         correct_words = sum(1 for i, word in enumerate(spoken_words) 
                           if i < len(original_words) and word == original_words[i])
         accuracy = correct_words / len(original_words) if original_words else 0
-        words_per_minute = len(spoken_words) / (time_spent / 60)
+        
+        # Adjust for difficulty
+        adjusted_accuracy = accuracy * (1.1 - (current_difficulty * 0.1))
+        adjusted_accuracy = min(1.0, max(0, adjusted_accuracy))
+        
+        words_per_minute = len(spoken_words) * 2  # Simplified
         
         test_result = TestResult(
             user_id=user_id,
             test_type='speech',
-            score=accuracy * 100,
-            accuracy=accuracy,
+            score=adjusted_accuracy * 100,
+            accuracy=adjusted_accuracy,
             words_per_minute=words_per_minute,
-            time_spent=time_spent
+            time_spent=30,
+            difficulty_level=current_difficulty
         )
         db.session.add(test_result)
-        db.session.commit()
         
-        # Update user's total learning time
-        user = User.query.get(user_id)
+        # Update learning time
         if user:
-            user.total_learning_time += time_spent // 60  # Convert to minutes
+            user.total_learning_time += 1
             user.last_active = datetime.utcnow()
         
-        # Record learning session
+        # Record session
         learning_session = LearningSession(
             user_id=user_id,
             session_type='test',
             activity_id=test_result.id,
-            time_spent=time_spent,
+            time_spent=30,
             date=date.today()
         )
         db.session.add(learning_session)
+        
+        # Update difficulty
+        update_response = update_difficulty_internal(user_id, adjusted_accuracy)
+        
         db.session.commit()
         
         return jsonify({
-            'accuracy': accuracy,
+            'accuracy': adjusted_accuracy,
+            'score': adjusted_accuracy * 100,
             'words_per_minute': words_per_minute,
-            'score': accuracy * 100,
-            'time_spent': time_spent
+            'difficulty_level': current_difficulty,
+            'new_difficulty': update_response.get('new_difficulty', current_difficulty),
+            'ml_available': ML_AVAILABLE
         }), 200
         
     except Exception as e:
@@ -297,7 +405,9 @@ def listening_test():
         user_id = data['user_id']
         typed_text = data['typed_text']
         original_text = data['original_text']
-        time_spent = data.get('time_spent', 45)  # in seconds
+        
+        user = User.query.get(user_id)
+        current_difficulty = user.current_difficulty if user else 1.0
         
         original_words = original_text.lower().split()
         typed_words = typed_text.lower().split()
@@ -306,83 +416,136 @@ def listening_test():
                           if i < len(original_words) and word == original_words[i])
         accuracy = correct_words / len(original_words) if original_words else 0
         
+        adjusted_accuracy = accuracy * (1.1 - (current_difficulty * 0.1))
+        adjusted_accuracy = min(1.0, max(0, adjusted_accuracy))
+        
         test_result = TestResult(
             user_id=user_id,
             test_type='listening',
-            score=accuracy * 100,
-            accuracy=accuracy,
-            time_spent=time_spent
+            score=adjusted_accuracy * 100,
+            accuracy=adjusted_accuracy,
+            time_spent=45,
+            difficulty_level=current_difficulty
         )
         db.session.add(test_result)
-        db.session.commit()
         
-        # Update user's total learning time
-        user = User.query.get(user_id)
         if user:
-            user.total_learning_time += time_spent // 60  # Convert to minutes
+            user.total_learning_time += 1
             user.last_active = datetime.utcnow()
         
-        # Record learning session
         learning_session = LearningSession(
             user_id=user_id,
             session_type='test',
             activity_id=test_result.id,
-            time_spent=time_spent,
+            time_spent=45,
             date=date.today()
         )
         db.session.add(learning_session)
+        
+        update_response = update_difficulty_internal(user_id, adjusted_accuracy)
+        
         db.session.commit()
         
         return jsonify({
-            'accuracy': accuracy,
-            'score': accuracy * 100,
-            'time_spent': time_spent
+            'accuracy': adjusted_accuracy,
+            'score': adjusted_accuracy * 100,
+            'difficulty_level': current_difficulty,
+            'new_difficulty': update_response.get('new_difficulty', current_difficulty),
+            'ml_available': ML_AVAILABLE
         }), 200
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Game Routes - FIXED GAME TYPE NAMES
+def update_difficulty_internal(user_id, score):
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return {'error': 'User not found'}
+        
+        history = json.loads(user.performance_history or '[]')
+        
+        recent_scores = [h['score'] for h in history[-3:]] if len(history) >= 3 else [0.5]
+        recent_trend = score - np.mean(recent_scores) if recent_scores else 0
+        
+        adjustment = difficulty_system.predict_adjustment(score, recent_trend)
+        
+        new_difficulty = calculate_new_difficulty(user.current_difficulty, adjustment, score)
+        
+        user.current_difficulty = new_difficulty
+        
+        history.append({
+            'timestamp': datetime.utcnow().isoformat(),
+            'score': score,
+            'difficulty': new_difficulty
+        })
+        
+        if len(history) > 10:
+            history = history[-10:]
+        
+        user.performance_history = json.dumps(history)
+        
+        return {
+            'new_difficulty': new_difficulty,
+            'adjustment': adjustment
+        }
+        
+    except Exception as e:
+        print(f"Error updating difficulty: {e}")
+        return {'error': str(e)}
+
 @app.route('/api/save-game-score', methods=['POST'])
 def save_game_score():
     try:
         data = request.json
-        print(f"Saving game score: {data}")  # Debug logging
-        
         user_id = data['user_id']
         game_type = data['game_type']
         score = data['score']
         level = data.get('level', 1)
-        time_spent = data.get('time_spent', 120)  # in seconds
+        
+        user = User.query.get(user_id)
+        current_difficulty = user.current_difficulty if user else 1.0
+        
+        # Normalize score (0-1)
+        max_scores = {
+            'word_jumble': 100,
+            'memory_match': 60,
+            'spelling_bee': 100
+        }
+        max_score = max_scores.get(game_type, 100)
+        normalized_score = min(score / max_score, 1.0)
+        
+        # Adjust score based on difficulty
+        adjusted_score = int(score * (1.1 - (current_difficulty * 0.1)))
         
         game_score = GameScore(
             user_id=user_id,
             game_type=game_type,
-            score=score,
+            score=adjusted_score,
             level=level,
-            time_spent=time_spent
+            time_spent=120,
+            difficulty_level=current_difficulty
         )
         db.session.add(game_score)
-        db.session.commit()
         
-        # Update user's total learning time
-        user = User.query.get(user_id)
         if user:
-            user.total_learning_time += time_spent // 60  # Convert to minutes
+            user.total_learning_time += 2
             user.last_active = datetime.utcnow()
         
-        # Record learning session
         learning_session = LearningSession(
             user_id=user_id,
             session_type='game',
             activity_id=game_score.id,
-            time_spent=time_spent,
+            time_spent=120,
             date=date.today()
         )
         db.session.add(learning_session)
+        
+        update_response = update_difficulty_internal(user_id, normalized_score)
+        
         db.session.commit()
         
-        # Check if this is a new high score
+        # Check high score
         highest_score = db.session.query(
             db.func.max(GameScore.score)
         ).filter_by(
@@ -390,265 +553,261 @@ def save_game_score():
             game_type=game_type
         ).scalar() or 0
         
-        is_new_high_score = score > highest_score
+        is_new_high_score = adjusted_score > highest_score
         
         return jsonify({
             'message': 'Score saved successfully',
             'is_new_high_score': is_new_high_score,
             'previous_high_score': highest_score,
-            'new_score': score
+            'new_score': adjusted_score,
+            'difficulty_level': current_difficulty,
+            'new_difficulty': update_response.get('new_difficulty', current_difficulty),
+            'ml_available': ML_AVAILABLE
         }), 200
     except Exception as e:
-        print(f"Error saving game score: {str(e)}")  # Debug logging
         return jsonify({'error': str(e)}), 500
 
-# NEW: Learning Metrics Routes
-@app.route('/api/learning-metrics/<int:user_id>', methods=['GET'])
-def get_learning_metrics(user_id):
-    """Get comprehensive learning metrics for dashboard"""
+@app.route('/api/get-adaptive-content/<string:content_type>', methods=['GET'])
+def get_adaptive_content(content_type):
     try:
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
+        user_id = request.args.get('user_id')
+        difficulty = float(request.args.get('difficulty', 1.0))
         
-        # Get learning sessions for streak calculation
-        sessions = LearningSession.query.filter_by(user_id=user_id)\
-            .order_by(LearningSession.date.desc()).all()
+        user = User.query.get(user_id) if user_id else None
+        if user:
+            difficulty = user.current_difficulty
         
-        # Calculate streak
-        streak_data = calculate_streak(sessions)
-        
-        # Get today's learning time
-        today = date.today()
-        today_sessions = LearningSession.query.filter_by(
-            user_id=user_id, 
-            date=today
-        ).all()
-        today_learning = sum(session.time_spent for session in today_sessions) // 60  # minutes
-        
-        # Get improvement rate (based on test scores from last 7 days vs previous 7 days)
-        improvement_rate = calculate_improvement_rate(user_id)
-        
-        # Calculate blocks earned (1 block = 30 minutes of learning)
-        blocks_earned = user.total_learning_time // 30
-        
-        # Get daily goal status (60 minutes target)
-        daily_goal = today_learning >= 60
-        
-        # Get recent test scores for improvement calculation
-        recent_tests = TestResult.query.filter_by(user_id=user_id)\
-            .order_by(TestResult.created_at.desc()).limit(10).all()
-        
-        test_improvement = calculate_test_improvement(recent_tests) if len(recent_tests) > 1 else 0
-        
-        metrics = {
-            'streak': streak_data['current_streak'],
-            'longest_streak': streak_data['longest_streak'],
-            'total_learning_time': user.total_learning_time,  # in minutes
-            'today_learning': today_learning,
-            'improvement_rate': improvement_rate,
-            'test_improvement': test_improvement,
-            'blocks_earned': blocks_earned,
-            'daily_goal': daily_goal,
-            'daily_goal_target': 60,
-            'last_active': user.last_active.isoformat() if user.last_active else None
-        }
-        
-        return jsonify(metrics), 200
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-def calculate_streak(sessions):
-    """Calculate current streak and longest streak"""
-    if not sessions:
-        return {'current_streak': 0, 'longest_streak': 0}
-    
-    # Get unique dates with learning activity
-    learning_dates = set(session.date for session in sessions)
-    sorted_dates = sorted(learning_dates, reverse=True)
-    
-    current_streak = 0
-    longest_streak = 0
-    temp_streak = 0
-    prev_date = None
-    
-    for learning_date in sorted_dates:
-        if prev_date is None:
-            # First day of current streak
-            current_streak = 1
-            temp_streak = 1
+        # Content based on difficulty
+        if difficulty < 1.3:
+            # Beginner
+            if content_type == 'speech_test':
+                sentences = [
+                    "The cat sleeps",
+                    "We eat food",
+                    "Birds fly high",
+                    "I love my family",
+                    "The sun is bright"
+                ]
+            else:  # listening_test
+                sentences = [
+                    "Hello world",
+                    "Good morning",
+                    "How are you",
+                    "Thank you very much",
+                    "See you later"
+                ]
+        elif difficulty < 1.8:
+            # Easy
+            if content_type == 'speech_test':
+                sentences = [
+                    "The quick brown fox jumps over the lazy dog",
+                    "She sells seashells by the seashore",
+                    "My little brother loves to play with his red ball",
+                    "We visit the library every Saturday to borrow books",
+                    "The bright moon shines at night"
+                ]
+            else:
+                sentences = [
+                    "The library has many interesting books about animals",
+                    "Children should eat healthy food and exercise regularly",
+                    "Our planet Earth revolves around the sun",
+                    "The curious explorer discovered ancient ruins",
+                    "Musicians practice for hours to perfect their performances"
+                ]
+        elif difficulty < 2.3:
+            # Medium
+            if content_type == 'speech_test':
+                sentences = [
+                    "Despite the inclement weather conditions, the expedition team persevered",
+                    "The astrophysicist postulated a revolutionary theory regarding quantum entanglement",
+                    "Beneath the phosphorescent bioluminescence of the abyssal trench",
+                    "Through meticulous anthropological analysis, researchers deciphered inscriptions",
+                    "The symphony's crescendo evoked profound emotional resonance"
+                ]
+            else:
+                sentences = [
+                    "Quantum superposition allows particles to exist in multiple states simultaneously",
+                    "The geopolitical implications of transcontinental trade agreements necessitate diplomacy",
+                    "Neuroplasticity enables cognitive adaptation through synaptic reorganization",
+                    "Photosynthetic organisms convert electromagnetic radiation into biochemical energy",
+                    "Algorithmic complexity analysis evaluates computational efficiency"
+                ]
         else:
-            days_diff = (prev_date - learning_date).days
-            if days_diff == 1:
-                # Consecutive day
-                if current_streak == temp_streak:
-                    current_streak += 1
-                temp_streak += 1
+            # Hard/Expert
+            if content_type == 'speech_test':
+                sentences = [
+                    "The quintessential manifestation of existential phenomenology transcends conventional epistemological paradigms",
+                    "Multifaceted interdisciplinary synergies catalyze unprecedented innovations in quantum computing architectures",
+                    "Epistemological deconstruction of hegemonic narratives necessitates dialectical interrogation of ideological presuppositions",
+                    "Biopsychosocial models of psychopathology integrate neurobiological, psychological, and sociocultural determinants",
+                    "Poststructuralist literary criticism problematizes authorial intentionality and textual determinacy"
+                ]
             else:
-                # Streak broken
-                temp_streak = 1
-        
-        longest_streak = max(longest_streak, temp_streak)
-        prev_date = learning_date
-    
-    return {
-        'current_streak': current_streak,
-        'longest_streak': longest_streak
-    }
-
-def calculate_improvement_rate(user_id):
-    """Calculate improvement rate based on recent test scores"""
-    # Get tests from last 14 days
-    fourteen_days_ago = datetime.utcnow() - timedelta(days=14)
-    recent_tests = TestResult.query.filter(
-        TestResult.user_id == user_id,
-        TestResult.created_at >= fourteen_days_ago
-    ).all()
-    
-    if len(recent_tests) < 2:
-        return 0
-    
-    # Split into two weeks
-    midpoint = len(recent_tests) // 2
-    week1_tests = recent_tests[:midpoint]
-    week2_tests = recent_tests[midpoint:]
-    
-    if not week1_tests or not week2_tests:
-        return 0
-    
-    week1_avg = sum(test.score for test in week1_tests) / len(week1_tests)
-    week2_avg = sum(test.score for test in week2_tests) / len(week2_tests)
-    
-    if week1_avg == 0:
-        return 100 if week2_avg > 0 else 0
-    
-    improvement = ((week2_avg - week1_avg) / week1_avg) * 100
-    return max(0, min(100, improvement))  # Cap between 0-100%
-
-def calculate_test_improvement(recent_tests):
-    """Calculate improvement from oldest to newest test"""
-    if len(recent_tests) < 2:
-        return 0
-    
-    oldest_score = recent_tests[-1].score
-    newest_score = recent_tests[0].score
-    
-    if oldest_score == 0:
-        return 100 if newest_score > 0 else 0
-    
-    improvement = ((newest_score - oldest_score) / oldest_score) * 100
-    return max(0, min(100, improvement))
-
-# NEW: Learning Blocks Data
-@app.route('/api/learning-blocks/<int:user_id>', methods=['GET'])
-def get_learning_blocks(user_id):
-    """Get learning blocks data for visualization (like GitHub contributions)"""
-    try:
-        # Get learning sessions from last 150 days (for 150 blocks visualization)
-        end_date = date.today()
-        start_date = end_date - timedelta(days=149)
-        
-        sessions = LearningSession.query.filter(
-            LearningSession.user_id == user_id,
-            LearningSession.date >= start_date,
-            LearningSession.date <= end_date
-        ).all()
-        
-        # Group sessions by date and calculate daily learning time
-        daily_learning = defaultdict(int)
-        for session in sessions:
-            daily_learning[session.date] += session.time_spent // 60  # Convert to minutes
-        
-        # Create blocks data for 150 days
-        blocks = []
-        for i in range(150):
-            block_date = end_date - timedelta(days=149 - i)
-            minutes = daily_learning.get(block_date, 0)
-            
-            # Determine intensity level
-            if minutes == 0:
-                intensity = 0
-            elif minutes < 30:
-                intensity = 1
-            elif minutes < 60:
-                intensity = 2
-            else:
-                intensity = 3
-            
-            blocks.append({
-                'date': block_date.isoformat(),
-                'minutes': minutes,
-                'intensity': intensity,
-                'filled': minutes > 0
-            })
-        
-        return jsonify({'blocks': blocks}), 200
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# FIXED: Highest Scores Route - Corrected game type queries
-@app.route('/api/user-highest-scores/<int:user_id>', methods=['GET'])
-def get_user_highest_scores(user_id):
-    """Get highest scores for a user across all tests and games"""
-    try:
-        print(f"Fetching highest scores for user: {user_id}")  # Debug logging
-        
-        # Get highest test scores
-        highest_speech = db.session.query(
-            db.func.max(TestResult.score)
-        ).filter_by(user_id=user_id, test_type='speech').scalar() or 0
-        
-        highest_listening = db.session.query(
-            db.func.max(TestResult.score)
-        ).filter_by(user_id=user_id, test_type='listening').scalar() or 0
-        
-        # Get highest game scores - FIXED: Using correct game type names
-        highest_memory_match = db.session.query(
-            db.func.max(GameScore.score)
-        ).filter_by(user_id=user_id, game_type='memory_match').scalar() or 0
-        
-        highest_word_jumble = db.session.query(
-            db.func.max(GameScore.score)
-        ).filter_by(user_id=user_id, game_type='word_jumble').scalar() or 0
-        
-        highest_spelling_bee = db.session.query(
-            db.func.max(GameScore.score)
-        ).filter_by(user_id=user_id, game_type='spelling_bee').scalar() or 0
-        
-        # Debug logging
-        print(f"Memory Match high: {highest_memory_match}")
-        print(f"Word Jumble high: {highest_word_jumble}")
-        print(f"Spelling Bee high: {highest_spelling_bee}")
+                sentences = [
+                    "The ontological implications of quantum decoherence challenge classical metaphysical assumptions about reality",
+                    "Epistemological relativism posits that knowledge claims are contingent upon specific cultural and historical contexts",
+                    "Neurophenomenological approaches seek to bridge first-person subjective experience with third-person neuroscientific data",
+                    "Sociolinguistic analysis reveals how power dynamics are encoded and reproduced through discursive practices",
+                    "The hermeneutic circle describes the iterative process of understanding texts through the interplay of parts and whole"
+                ]
         
         return jsonify({
-            'highest_scores': {
-                'speech_test': highest_speech,
-                'listening_test': highest_listening,
-                'word_jumble': highest_word_jumble,
-                'memory_match': highest_memory_match,
-                'spelling_bee': highest_spelling_bee
-            }
+            'content': sentences,
+            'difficulty_level': difficulty,
+            'ml_available': ML_AVAILABLE
         }), 200
         
     except Exception as e:
-        print(f"Error in get_user_highest_scores: {str(e)}")  # Debug logging
         return jsonify({'error': str(e)}), 500
 
-# NEW: Combined Dashboard Data Route
+@app.route('/api/parent-dashboard/<int:parent_id>', methods=['GET'])
+def get_parent_dashboard(parent_id):
+    try:
+        parent = User.query.get(parent_id)
+        if not parent or parent.user_type != 'parent':
+            return jsonify({'error': 'Parent not found'}), 404
+        
+        children = User.query.filter_by(parent_id=parent_id).all()
+        
+        if not children:
+            return jsonify({
+                'message': 'No children registered yet', 
+                'children': [],
+                'parent_info': {
+                    'parent_username': parent.username,
+                    'parent_id': parent.id,
+                    'email': parent.email,
+                    'total_children': 0
+                }
+            }), 200
+        
+        children_data = []
+        
+        for child in children:
+            highest_speech = db.session.query(db.func.max(TestResult.score))\
+                .filter_by(user_id=child.id, test_type='speech').scalar() or 0
+            
+            highest_listening = db.session.query(db.func.max(TestResult.score))\
+                .filter_by(user_id=child.id, test_type='listening').scalar() or 0
+            
+            highest_word_jumble = db.session.query(db.func.max(GameScore.score))\
+                .filter_by(user_id=child.id, game_type='word_jumble').scalar() or 0
+            
+            highest_memory_match = db.session.query(db.func.max(GameScore.score))\
+                .filter_by(user_id=child.id, game_type='memory_match').scalar() or 0
+            
+            highest_spelling_bee = db.session.query(db.func.max(GameScore.score))\
+                .filter_by(user_id=child.id, game_type='spelling_bee').scalar() or 0
+            
+            recent_tests = TestResult.query.filter_by(user_id=child.id)\
+                .order_by(TestResult.created_at.desc()).limit(5).all()
+            
+            recent_games = GameScore.query.filter_by(user_id=child.id)\
+                .order_by(GameScore.created_at.desc()).limit(5).all()
+            
+            total_tests = TestResult.query.filter_by(user_id=child.id).count()
+            total_games = GameScore.query.filter_by(user_id=child.id).count()
+            
+            sessions = LearningSession.query.filter_by(user_id=child.id)\
+                .order_by(LearningSession.date.desc()).all()
+            
+            learning_dates = set(session.date for session in sessions)
+            sorted_dates = sorted(learning_dates, reverse=True)
+            
+            current_streak = 0
+            longest_streak = 0
+            temp_streak = 0
+            prev_date = None
+            
+            for learning_date in sorted_dates:
+                if prev_date is None:
+                    current_streak = 1
+                    temp_streak = 1
+                else:
+                    days_diff = (prev_date - learning_date).days
+                    if days_diff == 1:
+                        if current_streak == temp_streak:
+                            current_streak += 1
+                        temp_streak += 1
+                    else:
+                        temp_streak = 1
+                
+                longest_streak = max(longest_streak, temp_streak)
+                prev_date = learning_date
+            
+            today = date.today()
+            today_sessions = LearningSession.query.filter_by(
+                user_id=child.id, 
+                date=today
+            ).all()
+            today_learning = sum(session.time_spent for session in today_sessions) // 60
+            
+            child_data = {
+                'child_id': child.id,
+                'child_name': child.username,
+                'child_age': child.age,
+                'child_email': child.email,
+                'current_difficulty': child.current_difficulty,
+                'total_learning_time': child.total_learning_time,
+                'last_active': child.last_active.isoformat() if child.last_active else None,
+                'streak': current_streak,
+                'longest_streak': longest_streak,
+                'today_learning': today_learning,
+                'highest_scores': {
+                    'speech_test': highest_speech,
+                    'listening_test': highest_listening,
+                    'word_jumble': highest_word_jumble,
+                    'memory_match': highest_memory_match,
+                    'spelling_bee': highest_spelling_bee
+                },
+                'recent_tests': [
+                    {
+                        'test_type': test.test_type,
+                        'score': test.score,
+                        'difficulty': test.difficulty_level,
+                        'date': test.created_at.isoformat()
+                    } for test in recent_tests
+                ],
+                'recent_games': [
+                    {
+                        'game_type': game.game_type,
+                        'score': game.score,
+                        'level': game.level,
+                        'difficulty': game.difficulty_level,
+                        'date': game.created_at.isoformat()
+                    } for game in recent_games
+                ],
+                'total_tests': total_tests,
+                'total_games': total_games,
+                'learning_metrics': {
+                    'streak': current_streak,
+                    'longest_streak': longest_streak,
+                    'total_learning_time': child.total_learning_time,
+                    'today_learning': today_learning,
+                    'current_difficulty': child.current_difficulty
+                }
+            }
+            children_data.append(child_data)
+        
+        return jsonify({
+            'parent_id': parent_id,
+            'parent_username': parent.username,
+            'parent_email': parent.email,
+            'total_children': len(children),
+            'children': children_data,
+            'ml_available': ML_AVAILABLE
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/dashboard-data/<int:user_id>', methods=['GET'])
 def get_dashboard_data(user_id):
-    """Get all dashboard data in one request"""
     try:
-        print(f"Fetching dashboard data for user: {user_id}")  # Debug logging
-        
-        # Get user info
         user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        # Get highest scores
         highest_speech = db.session.query(
             db.func.max(TestResult.score)
         ).filter_by(user_id=user_id, test_type='speech').scalar() or 0
@@ -657,7 +816,6 @@ def get_dashboard_data(user_id):
             db.func.max(TestResult.score)
         ).filter_by(user_id=user_id, test_type='listening').scalar() or 0
         
-        # Get highest game scores
         highest_memory_match = db.session.query(
             db.func.max(GameScore.score)
         ).filter_by(user_id=user_id, game_type='memory_match').scalar() or 0
@@ -670,37 +828,50 @@ def get_dashboard_data(user_id):
             db.func.max(GameScore.score)
         ).filter_by(user_id=user_id, game_type='spelling_bee').scalar() or 0
         
-        # Get learning sessions for streak calculation
         sessions = LearningSession.query.filter_by(user_id=user_id)\
             .order_by(LearningSession.date.desc()).all()
         
-        # Calculate streak
-        streak_data = calculate_streak(sessions)
+        learning_dates = set(session.date for session in sessions)
+        sorted_dates = sorted(learning_dates, reverse=True)
         
-        # Get today's learning time
+        current_streak = 0
+        longest_streak = 0
+        temp_streak = 0
+        prev_date = None
+        
+        for learning_date in sorted_dates:
+            if prev_date is None:
+                current_streak = 1
+                temp_streak = 1
+            else:
+                days_diff = (prev_date - learning_date).days
+                if days_diff == 1:
+                    if current_streak == temp_streak:
+                        current_streak += 1
+                    temp_streak += 1
+                else:
+                    temp_streak = 1
+            
+            longest_streak = max(longest_streak, temp_streak)
+            prev_date = learning_date
+        
         today = date.today()
         today_sessions = LearningSession.query.filter_by(
             user_id=user_id, 
             date=today
         ).all()
-        today_learning = sum(session.time_spent for session in today_sessions) // 60  # minutes
+        today_learning = sum(session.time_spent for session in today_sessions) // 60
         
-        # Get improvement rate
-        improvement_rate = calculate_improvement_rate(user_id)
+        performance_history = json.loads(user.performance_history or '[]')
+        recent_scores = [h['score'] for h in performance_history[-5:]] if performance_history else [0]
+        improvement_rate = 0
+        if len(recent_scores) >= 2:
+            improvement_rate = ((recent_scores[-1] - recent_scores[0]) / recent_scores[0] * 100) if recent_scores[0] > 0 else 0
+            improvement_rate = max(0, min(100, improvement_rate))
         
-        # Calculate blocks earned (1 block = 30 minutes of learning)
         blocks_earned = user.total_learning_time // 30
-        
-        # Get daily goal status (60 minutes target)
         daily_goal = today_learning >= 60
         
-        # Get recent test scores for improvement calculation
-        recent_tests = TestResult.query.filter_by(user_id=user_id)\
-            .order_by(TestResult.created_at.desc()).limit(10).all()
-        
-        test_improvement = calculate_test_improvement(recent_tests) if len(recent_tests) > 1 else 0
-        
-        # Get learning blocks data
         end_date = date.today()
         start_date = end_date - timedelta(days=149)
         blocks_sessions = LearningSession.query.filter(
@@ -709,18 +880,15 @@ def get_dashboard_data(user_id):
             LearningSession.date <= end_date
         ).all()
         
-        # Group sessions by date and calculate daily learning time
         daily_learning = defaultdict(int)
         for session in blocks_sessions:
-            daily_learning[session.date] += session.time_spent // 60  # Convert to minutes
+            daily_learning[session.date] += session.time_spent // 60
         
-        # Create blocks data for 150 days
         learning_blocks = []
         for i in range(150):
             block_date = end_date - timedelta(days=149 - i)
             minutes = daily_learning.get(block_date, 0)
             
-            # Determine intensity level
             if minutes == 0:
                 intensity = 0
             elif minutes < 30:
@@ -743,7 +911,9 @@ def get_dashboard_data(user_id):
                 'user_id': user.id,
                 'email': user.email,
                 'user_type': user.user_type,
-                'age': user.age
+                'age': user.age,
+                'current_difficulty': user.current_difficulty,
+                'performance_history': performance_history
             },
             'highest_scores': {
                 'speech_test': highest_speech,
@@ -753,283 +923,34 @@ def get_dashboard_data(user_id):
                 'spelling_bee': highest_spelling_bee
             },
             'learning_metrics': {
-                'streak': streak_data['current_streak'],
-                'longest_streak': streak_data['longest_streak'],
+                'streak': current_streak,
+                'longest_streak': longest_streak,
                 'total_learning_time': user.total_learning_time,
                 'today_learning': today_learning,
                 'improvement_rate': improvement_rate,
-                'test_improvement': test_improvement,
                 'blocks_earned': blocks_earned,
                 'daily_goal': daily_goal,
                 'daily_goal_target': 60,
+                'current_difficulty': user.current_difficulty,
                 'last_active': user.last_active.isoformat() if user.last_active else None
             },
-            'learning_blocks': learning_blocks
+            'learning_blocks': learning_blocks,
+            'ml_available': ML_AVAILABLE
         }
         
-        print(f"Dashboard data: {dashboard_data}")  # Debug logging
         return jsonify(dashboard_data), 200
         
     except Exception as e:
-        print(f"Error in get_dashboard_data: {str(e)}")  # Debug logging
         return jsonify({'error': str(e)}), 500
 
-# Progress Routes
-@app.route('/api/progress/<int:user_id>', methods=['GET'])
-def get_progress(user_id):
-    test_results = TestResult.query.filter_by(user_id=user_id).all()
-    game_scores = GameScore.query.filter_by(user_id=user_id).all()
-    learning_sessions = LearningSession.query.filter_by(user_id=user_id).all()
-    
-    progress_data = {
-        'test_results': [
-            {
-                'test_type': tr.test_type,
-                'score': tr.score,
-                'time_spent': tr.time_spent,
-                'date': tr.created_at.isoformat()
-            } for tr in test_results
-        ],
-        'game_scores': [
-            {
-                'game_type': gs.game_type,
-                'score': gs.score,
-                'level': gs.level,
-                'time_spent': gs.time_spent,
-                'date': gs.created_at.isoformat()
-            } for gs in game_scores
-        ],
-        'learning_sessions': [
-            {
-                'session_type': ls.session_type,
-                'time_spent': ls.time_spent,
-                'date': ls.date.isoformat()
-            } for ls in learning_sessions
-        ],
-        'total_learning_time': sum(ls.time_spent for ls in learning_sessions) // 60
-    }
-    
-    return jsonify(progress_data), 200
-
-@app.route('/api/child-progress/<int:parent_id>', methods=['GET'])
-def get_child_progress(parent_id):
-    children = User.query.filter_by(parent_id=parent_id).all()
-    progress_data = []
-    
-    for child in children:
-        test_results = TestResult.query.filter_by(user_id=child.id).all()
-        game_scores = GameScore.query.filter_by(user_id=child.id).all()
-        learning_sessions = LearningSession.query.filter_by(user_id=child.id).all()
-        
-        # Get learning metrics for each child
-        metrics_response = get_learning_metrics(child.id)
-        metrics_data = metrics_response.get_json() if metrics_response.status_code == 200 else {}
-        
-        child_data = {
-            'child_id': child.id,
-            'child_name': child.username,
-            'child_age': child.age,
-            'test_results': [{'test_type': tr.test_type, 'score': tr.score, 'date': tr.created_at.isoformat()} for tr in test_results],
-            'game_scores': [{'game_type': gs.game_type, 'score': gs.score, 'level': gs.level} for gs in game_scores],
-            'learning_metrics': metrics_data if 'error' not in metrics_data else {},
-            'total_tests': len(test_results),
-            'total_games': len(game_scores),
-            'total_learning_time': sum(ls.time_spent for ls in learning_sessions) // 60
-        }
-        progress_data.append(child_data)
-    
-    return jsonify(progress_data), 200
-
-@app.route('/api/parent-dashboard/<int:parent_id>', methods=['GET'])
-def get_parent_dashboard(parent_id):
-    """Get parent dashboard with all children's progress"""
-    try:
-        children = User.query.filter_by(parent_id=parent_id).all()
-        
-        if not children:
-            return jsonify({'message': 'No children found for this parent', 'children': []}), 200
-        
-        children_data = []
-        
-        for child in children:
-            # Get child's highest scores
-            highest_scores = {
-                'speech_test': db.session.query(db.func.max(TestResult.score))
-                    .filter_by(user_id=child.id, test_type='speech').scalar() or 0,
-                'listening_test': db.session.query(db.func.max(TestResult.score))
-                    .filter_by(user_id=child.id, test_type='listening').scalar() or 0,
-                'word_jumble': db.session.query(db.func.max(GameScore.score))
-                    .filter_by(user_id=child.id, game_type='word_jumble').scalar() or 0,
-                'memory_match': db.session.query(db.func.max(GameScore.score))
-                    .filter_by(user_id=child.id, game_type='memory_match').scalar() or 0,
-                'spelling_bee': db.session.query(db.func.max(GameScore.score))
-                    .filter_by(user_id=child.id, game_type='spelling_bee').scalar() or 0
-            }
-            
-            # Get learning metrics
-            metrics_response = get_learning_metrics(child.id)
-            metrics_data = metrics_response.get_json() if metrics_response.status_code == 200 else {}
-            
-            # Get recent activity
-            recent_tests = TestResult.query.filter_by(user_id=child.id)\
-                .order_by(TestResult.created_at.desc()).limit(5).all()
-            
-            recent_games = GameScore.query.filter_by(user_id=child.id)\
-                .order_by(GameScore.created_at.desc()).limit(5).all()
-            
-            child_data = {
-                'child_id': child.id,
-                'child_name': child.username,
-                'child_age': child.age,
-                'highest_scores': highest_scores,
-                'learning_metrics': metrics_data,
-                'recent_tests': [
-                    {
-                        'test_type': test.test_type,
-                        'score': test.score,
-                        'date': test.created_at.isoformat()
-                    } for test in recent_tests
-                ],
-                'recent_games': [
-                    {
-                        'game_type': game.game_type,
-                        'score': game.score,
-                        'level': game.level,
-                        'date': game.created_at.isoformat()
-                    } for game in recent_games
-                ],
-                'total_tests': TestResult.query.filter_by(user_id=child.id).count(),
-                'total_games': GameScore.query.filter_by(user_id=child.id).count(),
-                'total_learning_time': child.total_learning_time if child.total_learning_time else 0
-            }
-            children_data.append(child_data)
-        
-        return jsonify({
-            'parent_id': parent_id,
-            'children': children_data
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/predict-dyslexia', methods=['POST'])
-def predict_dyslexia_route():
-    data = request.json
-    user_id = data['user_id']
-    
-    test_results = TestResult.query.filter_by(user_id=user_id).all()
-    
-    if len(test_results) < 2:
-        return jsonify({'error': 'Insufficient test data'}), 400
-    
-    speech_scores = [tr.accuracy for tr in test_results if tr.test_type == 'speech']
-    listening_scores = [tr.accuracy for tr in test_results if tr.test_type == 'listening']
-    speech_wpm = [tr.words_per_minute for tr in test_results if tr.test_type == 'speech' and tr.words_per_minute]
-    
-    avg_speech = np.mean(speech_scores) if speech_scores else 0
-    avg_listening = np.mean(listening_scores) if listening_scores else 0
-    avg_wpm = np.mean(speech_wpm) if speech_wpm else 30
-    
-    dyslexia_probability = predict_dyslexia(avg_speech, avg_listening, avg_wpm)
-    
-    return jsonify({
-        'dyslexia_probability': dyslexia_probability,
-        'is_at_risk': dyslexia_probability > 0.7,
-        'speech_score': avg_speech,
-        'listening_score': avg_listening,
-        'words_per_minute': avg_wpm
-    }), 200
-
-# Development & Testing Routes
 @app.route('/api/test', methods=['GET'])
 def test():
-    return jsonify({'message': 'Backend is working!', 'status': 'success'}), 200
-
-@app.route('/api/test-microphone', methods=['GET'])
-def test_microphone():
     return jsonify({
-        'message': 'Backend is ready for speech tests',
-        'status': 'active'
+        'message': 'Backend is working!',
+        'status': 'success',
+        'ml_available': ML_AVAILABLE
     }), 200
-
-@app.route('/api/create-test-user', methods=['GET'])
-def create_test_user():
-    user = User.query.filter_by(username='testuser').first()
-    if not user:
-        hashed_password = generate_password_hash('test123')
-        user = User(
-            username='testuser',
-            email='test@test.com',
-            password_hash=hashed_password,
-            user_type='parent'
-        )
-        db.session.add(user)
-        db.session.commit()
-        return jsonify({'message': 'Test user created', 'user_id': user.id}), 200
-    return jsonify({'message': 'Test user already exists', 'user_id': user.id}), 200
-
-@app.route('/api/create-sample-data', methods=['GET'])
-def create_sample_data():
-    # Create a test user if doesn't exist
-    user = User.query.filter_by(username='testuser').first()
-    if not user:
-        hashed_password = generate_password_hash('test123')
-        user = User(
-            username='testuser',
-            email='test@test.com',
-            password_hash=hashed_password,
-            user_type='parent'
-        )
-        db.session.add(user)
-        db.session.commit()
-    
-    # Create sample test results
-    test_result = TestResult(
-        user_id=user.id,
-        test_type='speech',
-        score=85.5,
-        accuracy=0.855,
-        words_per_minute=45.2,
-        time_spent=180
-    )
-    db.session.add(test_result)
-    
-    # Create sample game score
-    game_score = GameScore(
-        user_id=user.id,
-        game_type='word_jumble',
-        score=100,
-        level=2,
-        time_spent=300
-    )
-    db.session.add(game_score)
-    
-    # Update user's learning time
-    user.total_learning_time = 8  # 8 minutes
-    
-    # Create learning session
-    learning_session = LearningSession(
-        user_id=user.id,
-        session_type='test',
-        activity_id=test_result.id,
-        time_spent=180,
-        date=date.today()
-    )
-    db.session.add(learning_session)
-    
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'Sample data created', 
-        'user_id': user.id,
-        'test_results': 1,
-        'game_scores': 1,
-        'learning_sessions': 1
-    }), 200
-
-# Initialize database
-with app.app_context():
-    db.create_all()
 
 if __name__ == '__main__':
+    print(f"ML Available: {ML_AVAILABLE}")
     app.run(debug=True, port=5000)

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
@@ -10,9 +10,9 @@ import Progress from './components/Progress';
 import ForgotPassword from './components/ForgotPassword';
 import ChangePassword from './components/ChangePassword';
 import ParentDashboard from './components/ParentDashboard';
+import LearningSidebar from './components/LearningSidebar';
 import './App.css';
 
-// Private Route Component - Checks if user is logged in
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -32,19 +32,25 @@ function PrivateRoute({ children }) {
   return children;
 }
 
-// Main Layout Component with Sidebar
 function MainLayout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [showUserPopup, setShowUserPopup] = React.useState(false);
-  const [theme, setTheme] = React.useState('soothing');
+  const [showUserPopup, setShowUserPopup] = useState(false);
+  const [theme, setTheme] = useState('soothing');
+  const [showLearningSidebar, setShowLearningSidebar] = useState(true);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   const isParent = user.user_type === 'parent';
   const isChild = user.user_type === 'child';
 
-  // Apply theme to body
-  React.useEffect(() => {
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
     document.body.className = `theme-${theme}`;
   }, [theme]);
 
@@ -64,6 +70,8 @@ function MainLayout({ children }) {
     { path: '/games', label: '🎮 Games', icon: '🎮', visible: isChild },
     { path: '/progress', label: '📊 My Progress', icon: '📊', visible: isChild },
   ];
+
+  const shouldShowLearningSidebar = isChild && windowWidth >= 1200 && showLearningSidebar;
 
   return (
     <div className={`app-container theme-${theme}`}>
@@ -97,6 +105,23 @@ function MainLayout({ children }) {
             </button>
           </div>
           <span className="user-greeting">Welcome, {user.username}!</span>
+          {isChild && windowWidth < 1200 && (
+            <button 
+              className="toggle-learning-btn"
+              onClick={() => setShowLearningSidebar(!showLearningSidebar)}
+              style={{
+                background: 'var(--primary-color)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                marginRight: '10px'
+              }}
+            >
+              {showLearningSidebar ? '✕ Close Learning' : '🔤 Learning Hub'}
+            </button>
+          )}
           <button 
             className="change-password-btn"
             onClick={() => navigate('/change-password')}
@@ -130,7 +155,6 @@ function MainLayout({ children }) {
               ))}
           </nav>
           
-          {/* User Info Section - Clickable for Profile Popup */}
           <div 
             className="user-info-sidebar clickable-user-section"
             onClick={() => setShowUserPopup(true)}
@@ -144,7 +168,6 @@ function MainLayout({ children }) {
             </div>
           </div>
 
-          {/* User Info Popup */}
           {showUserPopup && (
             <div className="user-popup-overlay" onClick={() => setShowUserPopup(false)}>
               <div className="user-popup" onClick={(e) => e.stopPropagation()}>
@@ -179,6 +202,17 @@ function MainLayout({ children }) {
                       <span className="detail-value">{user.email}</span>
                     </div>
                   )}
+                  {isChild && user.current_difficulty && (
+                    <div className="detail-item">
+                      <span className="detail-label">Current Level:</span>
+                      <span className="detail-value">
+                        {user.current_difficulty < 1.3 ? 'Beginner' : 
+                         user.current_difficulty < 1.8 ? 'Easy' : 
+                         user.current_difficulty < 2.3 ? 'Medium' : 
+                         user.current_difficulty < 2.8 ? 'Hard' : 'Expert'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="popup-actions">
                   <button 
@@ -196,8 +230,19 @@ function MainLayout({ children }) {
           )}
         </aside>
 
+        {/* Learning Sidebar */}
+        {isChild && (
+          <>
+            {(shouldShowLearningSidebar || (windowWidth < 1200 && showLearningSidebar)) && (
+              <LearningSidebar />
+            )}
+          </>
+        )}
+
         {/* Main Content Area */}
-        <main className="content-area">
+        <main className="content-area" style={{ 
+          marginLeft: shouldShowLearningSidebar ? '520px' : '240px'
+        }}>
           {children}
         </main>
       </div>
@@ -210,12 +255,10 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           
-          {/* Protected Routes with Sidebar Layout */}
           <Route path="/change-password" element={
             <PrivateRoute>
               <MainLayout>
@@ -259,11 +302,6 @@ function App() {
             </PrivateRoute>
           } />
           
-          {/* Redirect old test routes to new combined tests */}
-          <Route path="/speech-test" element={<Navigate to="/tests" />} />
-          <Route path="/listening-test" element={<Navigate to="/tests" />} />
-          
-          {/* Default Route */}
           <Route path="/" element={<Navigate to="/login" />} />
         </Routes>
       </Router>
