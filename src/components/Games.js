@@ -94,164 +94,176 @@ function WordJumbleGame({ saveGameScore }) {
   const [feedback, setFeedback] = useState('');
   const [moves, setMoves] = useState(0);
   const [gameCompleted, setGameCompleted] = useState(false);
+  const [correctSentences, setCorrectSentences] = useState([]);
+  const [allSentences, setAllSentences] = useState([]);
+  const [showAnswers, setShowAnswers] = useState(false);
 
   const sentences = [
-  // Simple & Basic Sentences
-  "The cat sleeps on the soft mat",
-  "My dog plays with a red ball",
-  "We eat breakfast every morning",
-  "The sun shines in the sky",
-  "Birds fly high above trees",
-  "I love my family very much",
-  "Children play in the park",
-  "The fish swim in water",
-  "We read books every day",
-  "Mother cooks delicious food",
+    // Simple & Basic Sentences
+    "The cat sleeps on the soft mat",
+    "My dog plays with a red ball",
+    "We eat breakfast every morning",
+    "The sun shines in the sky",
+    "Birds fly high above trees",
+    "I love my family very much",
+    "Children play in the park",
+    "The fish swim in water",
+    "We read books every day",
+    "Mother cooks delicious food",
 
-  // Family & Home Life
-  "My father reads the newspaper",
-  "We watch television together",
-  "The baby sleeps in the crib",
-  "Our house has a big garden",
-  "We clean our rooms daily",
-  "Grandma tells wonderful stories",
-  "We eat dinner at the table",
-  "My sister plays the piano",
-  "Brothers share their toys",
-  "We help with household chores",
+    // Family & Home Life
+    "My father reads the newspaper",
+    "We watch television together",
+    "The baby sleeps in the crib",
+    "Our house has a big garden",
+    "We clean our rooms daily",
+    "Grandma tells wonderful stories",
+    "We eat dinner at the table",
+    "My sister plays the piano",
+    "Brothers share their toys",
+    "We help with household chores",
 
-  // School & Learning
-  "Students learn in the classroom",
-  "Teachers write on the board",
-  "We use pencils for writing",
-  "The library has many books",
-  "Children raise their hands",
-  "We solve math problems together",
-  "Science class is very interesting",
-  "We draw pictures with crayons",
-  "Students listen to stories",
-  "We practice spelling words",
+    // School & Learning
+    "Students learn in the classroom",
+    "Teachers write on the board",
+    "We use pencils for writing",
+    "The library has many books",
+    "Children raise their hands",
+    "We solve math problems together",
+    "Science class is very interesting",
+    "We draw pictures with crayons",
+    "Students listen to stories",
+    "We practice spelling words",
 
-  // Nature & Animals
-  "Butterflies fly among flowers",
-  "Rabbits hop in the grass",
-  "Bees make sweet honey",
-  "Trees grow tall and strong",
-  "Flowers bloom in spring",
-  "The moon shines at night",
-  "Stars twinkle in the sky",
-  "Rain falls from clouds",
-  "Snow covers the ground",
-  "Wind blows through trees",
+    // Nature & Animals
+    "Butterflies fly among flowers",
+    "Rabbits hop in the grass",
+    "Bees make sweet honey",
+    "Trees grow tall and strong",
+    "Flowers bloom in spring",
+    "The moon shines at night",
+    "Stars twinkle in the sky",
+    "Rain falls from clouds",
+    "Snow covers the ground",
+    "Wind blows through trees",
 
-  // Food & Health
-  "We eat fruits for health",
-  "Vegetables make us strong",
-  "Drinking water is important",
-  "We brush our teeth daily",
-  "Exercise keeps us fit",
-  "Sleep helps us grow",
-  "We wash our hands often",
-  "Milk makes bones strong",
-  "We eat three meals daily",
-  "Healthy food gives energy",
+    // Food & Health
+    "We eat fruits for health",
+    "Vegetables make us strong",
+    "Drinking water is important",
+    "We brush our teeth daily",
+    "Exercise keeps us fit",
+    "Sleep helps us grow",
+    "We wash our hands often",
+    "Milk makes bones strong",
+    "We eat three meals daily",
+    "Healthy food gives energy",
 
-  // Activities & Hobbies
-  "We play games with friends",
-  "Children ride their bicycles",
-  "We swim in the pool",
-  "Friends jump rope together",
-  "We build with toy blocks",
-  "Children sing happy songs",
-  "We dance to fun music",
-  "Friends play hide and seek",
-  "We run in the playground",
-  "Children climb on equipment",
+    // Activities & Hobbies
+    "We play games with friends",
+    "Children ride their bicycles",
+    "We swim in the pool",
+    "Friends jump rope together",
+    "We build with toy blocks",
+    "Children sing happy songs",
+    "We dance to fun music",
+    "Friends play hide and seek",
+    "We run in the playground",
+    "Children climb on equipment",
 
-  // Weather & Seasons
-  "The sun warms the earth",
-  "Rain helps plants grow",
-  "Snow is cold and white",
-  "Wind blows leaves around",
-  "Clouds float in sky",
-  "Summer days are hot",
-  "Winter brings cold weather",
-  "Spring has pretty flowers",
-  "Autumn leaves change color",
-  "Weather changes every day",
+    // Weather & Seasons
+    "The sun warms the earth",
+    "Rain helps plants grow",
+    "Snow is cold and white",
+    "Wind blows leaves around",
+    "Clouds float in sky",
+    "Summer days are hot",
+    "Winter brings cold weather",
+    "Spring has pretty flowers",
+    "Autumn leaves change color",
+    "Weather changes every day",
 
-  // Community & Helpers
-  "Doctors help sick people",
-  "Police officers protect us",
-  "Firefighters put out fires",
-  "Teachers educate children",
-  "Farmers grow our food",
-  "Nurses care for patients",
-  "Drivers operate vehicles",
-  "Chefs cook delicious meals",
-  "Artists create beautiful paintings",
-  "Musicians play lovely music",
+    // Community & Helpers
+    "Doctors help sick people",
+    "Police officers protect us",
+    "Firefighters put out fires",
+    "Teachers educate children",
+    "Farmers grow our food",
+    "Nurses care for patients",
+    "Drivers operate vehicles",
+    "Chefs cook delicious meals",
+    "Artists create beautiful paintings",
+    "Musicians play lovely music",
 
-  // Transportation
-  "Cars drive on roads",
-  "Buses carry many people",
-  "Trains run on tracks",
-  "Airplanes fly high",
-  "Boats sail on water",
-  "Bicycles have two wheels",
-  "Trucks deliver goods",
-  "Ships cross the ocean",
-  "Motorcycles go fast",
-  "Helicopters hover above",
+    // Transportation
+    "Cars drive on roads",
+    "Buses carry many people",
+    "Trains run on tracks",
+    "Airplanes fly high",
+    "Boats sail on water",
+    "Bicycles have two wheels",
+    "Trucks deliver goods",
+    "Ships cross the ocean",
+    "Motorcycles go fast",
+    "Helicopters hover above",
 
-  // Colors & Shapes
-  "The sky is blue",
-  "Grass is green",
-  "Apples can be red",
-  "Bananas are yellow",
-  "Oranges are orange",
-  "Circles are round shapes",
-  "Squares have four sides",
-  "Triangles have three corners",
-  "Hearts mean love",
-  "Stars have five points",
+    // Colors & Shapes
+    "The sky is blue",
+    "Grass is green",
+    "Apples can be red",
+    "Bananas are yellow",
+    "Oranges are orange",
+    "Circles are round shapes",
+    "Squares have four sides",
+    "Triangles have three corners",
+    "Hearts mean love",
+    "Stars have five points",
 
-  // Numbers & Counting
-  "We count from one to ten",
-  "Two plus two equals four",
-  "Numbers help us measure",
-  "We learn to add numbers",
-  "Counting is fun to do",
-  "We subtract to find difference",
-  "Multiplication makes numbers bigger",
-  "Division shares things equally",
-  "We use numbers every day",
-  "Mathematics is everywhere",
+    // Numbers & Counting
+    "We count from one to ten",
+    "Two plus two equals four",
+    "Numbers help us measure",
+    "We learn to add numbers",
+    "Counting is fun to do",
+    "We subtract to find difference",
+    "Multiplication makes numbers bigger",
+    "Division shares things equally",
+    "We use numbers every day",
+    "Mathematics is everywhere",
 
-  // Feelings & Emotions
-  "Happy people smile often",
-  "Sad feelings make us cry",
-  "Anger is a strong emotion",
-  "Love makes us feel warm",
-  "We feel excited about surprises",
-  "Fear helps keep us safe",
-  "Pride comes from achievement",
-  "Kindness helps other people",
-  "Friendship is very important",
-  "We share our feelings openly",
+    // Feelings & Emotions
+    "Happy people smile often",
+    "Sad feelings make us cry",
+    "Anger is a strong emotion",
+    "Love makes us feel warm",
+    "We feel excited about surprises",
+    "Fear helps keep us safe",
+    "Pride comes from achievement",
+    "Kindness helps other people",
+    "Friendship is very important",
+    "We share our feelings openly",
 
-  // Moral Values
-  "We should always be honest",
-  "Sharing makes us good friends",
-  "Helping others is kind",
-  "We say please and thank you",
-  "Being polite shows respect",
-  "We take turns when playing",
-  "Listening is important too",
-  "We apologize for mistakes",
-  "Working hard brings success",
-  "We should never give up"
-];
+    // Moral Values
+    "We should always be honest",
+    "Sharing makes us good friends",
+    "Helping others is kind",
+    "We say please and thank you",
+    "Being polite shows respect",
+    "We take turns when playing",
+    "Listening is important too",
+    "We apologize for mistakes",
+    "Working hard brings success",
+    "We should never give up"
+  ];
+
+  const scrambleSentence = (sentence) => {
+    if (!sentence || typeof sentence !== 'string') {
+      console.error('Invalid sentence in scrambleSentence:', sentence);
+      return [];
+    }
+    const words = sentence.split(' ');
+    return [...words].sort(() => Math.random() - 0.5);
+  };
 
   const startNewRound = () => {
     if (moves >= 11) {
@@ -259,16 +271,36 @@ function WordJumbleGame({ saveGameScore }) {
       return;
     }
 
+    // Make sure sentences array exists and has items
+    if (!sentences || sentences.length === 0) {
+      console.error('Sentences array is empty or undefined');
+      setFeedback('❌ Game error: No sentences available');
+      return;
+    }
+
     const sentence = sentences[Math.floor(Math.random() * sentences.length)];
+    if (!sentence) {
+      console.error('Selected sentence is undefined');
+      return;
+    }
+    
     setCurrentSentence(sentence);
     setScrambledWords(scrambleSentence(sentence));
     setSelectedWords([]);
     setFeedback('');
-  };
-
-  const scrambleSentence = (sentence) => {
-    const words = sentence.split(' ');
-    return [...words].sort(() => Math.random() - 0.5);
+    
+    // Track all sentences shown
+    setAllSentences(prev => {
+      if (!prev.some(s => s.sentence === sentence)) {
+        return [...prev, {
+          sentence,
+          correct: false,
+          userAnswer: null,
+          completed: false
+        }];
+      }
+      return prev;
+    });
   };
 
   const selectWord = (word) => {
@@ -284,16 +316,31 @@ function WordJumbleGame({ saveGameScore }) {
   };
 
   const checkAnswer = () => {
-    if (gameCompleted) return;
+    if (gameCompleted || !currentSentence) return;
 
     const userSentence = selectedWords.join(' ');
     const newMoves = moves + 1;
     setMoves(newMoves);
 
+    // Update the allSentences array with user's attempt
+    setAllSentences(prev => prev.map(item => 
+      item.sentence === currentSentence 
+        ? { 
+            ...item, 
+            userAnswer: userSentence,
+            correct: userSentence === currentSentence,
+            completed: true
+          }
+        : item
+    ));
+
     if (userSentence === currentSentence) {
       const newScore = score + 10;
       setScore(newScore);
       setFeedback('🎉 Correct! Well done!');
+      
+      // Add to correct sentences list
+      setCorrectSentences(prev => [...prev, currentSentence]);
       
       if (newMoves >= 11) {
         endGame();
@@ -308,10 +355,64 @@ function WordJumbleGame({ saveGameScore }) {
     }
   };
 
+  const skipSentence = () => {
+    if (gameCompleted) return;
+    
+    const newMoves = moves + 1;
+    setMoves(newMoves);
+    setFeedback('⏭️ Sentence skipped!');
+    
+    // Mark as completed but incorrect
+    setAllSentences(prev => prev.map(item => 
+      item.sentence === currentSentence 
+        ? { 
+            ...item, 
+            userAnswer: null,
+            correct: false,
+            completed: true
+          }
+        : item
+    ));
+    
+    if (newMoves >= 11) {
+      endGame();
+    } else {
+      setTimeout(startNewRound, 1000);
+    }
+  };
+
   const endGame = () => {
     setGameCompleted(true);
     const level = Math.floor(score / 50) + 1;
     saveGameScore('word_jumble', score, level);
+  };
+
+  const downloadResults = () => {
+    const content = `Word Jumble Game Results\n\n` +
+                    `Final Score: ${score}\n` +
+                    `Correct Sentences: ${Math.floor(score / 10)}\n` +
+                    `Total Moves: ${moves}\n\n` +
+                    `ALL SENTENCES WITH ANSWERS:\n\n` +
+                    allSentences.map((item, index) => {
+                      const status = item.correct ? '✅ CORRECT' : '❌ INCORRECT';
+                      const userAnswer = item.userAnswer ? `Your answer: "${item.userAnswer}"` : 'Skipped';
+                      const correctAnswer = `Correct answer: "${item.sentence}"`;
+                      return `${index + 1}. ${item.sentence}\n   ${status}\n   ${userAnswer}\n   ${correctAnswer}\n`;
+                    }).join('\n') +
+                    `\n\nCORRECT SENTENCES ONLY:\n\n` +
+                    correctSentences.map((sentence, index) => 
+                      `${index + 1}. ${sentence}`
+                    ).join('\n');
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `word_jumble_results_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const restartGame = () => {
@@ -319,82 +420,139 @@ function WordJumbleGame({ saveGameScore }) {
     setMoves(0);
     setGameCompleted(false);
     setFeedback('');
+    setCorrectSentences([]);
+    setAllSentences([]);
+    setShowAnswers(false);
     startNewRound();
   };
 
   // Initialize first round
   React.useEffect(() => {
-    startNewRound();
+    if (sentences && sentences.length > 0) {
+      startNewRound();
+    } else {
+      console.error('Cannot start game: sentences array is empty');
+      setFeedback('❌ Game error: No sentences available');
+    }
   }, []);
+
+  const completedSentences = allSentences.filter(s => s.completed);
+  const correctCount = allSentences.filter(s => s.correct).length;
 
   return (
     <div className="game-screen">
       <h3>Word Jumble</h3>
-      <div className="score">Score: {score} | Moves: {moves}/11</div>
+      <div className="score">Score: {score} | Moves: {moves}/11 | Correct: {correctCount}/{completedSentences.length}</div>
       
       {gameCompleted && (
         <div className="game-completed">
           <h4>Game Completed! 🎉</h4>
           <p>Final Score: {score}</p>
           <p>Correct Sentences: {Math.floor(score / 10)}</p>
+          <p>Total Moves: {moves}</p>
+          
+          {/* Toggle Answers Button */}
+          <button 
+            onClick={() => setShowAnswers(!showAnswers)} 
+            className="answers-toggle-btn"
+          >
+            {showAnswers ? '🙈 Hide Answers' : '👁️ Show All Answers'}
+          </button>
+          
+          {/* Answers Display - Collapsible */}
+          {showAnswers && (
+            <div className="answers-section">
+              <h5>All Sentences with Answers:</h5>
+              <div className="answers-list">
+                {allSentences.map((item, index) => (
+                  <div key={index} className={`answer-item ${item.correct ? 'correct' : 'incorrect'}`}>
+                    <div className="sentence-number">{index + 1}.</div>
+                    <div className="sentence-content">
+                      <div className="original-sentence">"{item.sentence}"</div>
+                      <div className="answer-status">
+                        {item.correct ? (
+                          <span className="status-correct">✅ You got this right!</span>
+                        ) : item.userAnswer ? (
+                          <>
+                            <span className="status-incorrect">❌ Your answer: "{item.userAnswer}"</span>
+                            <span className="correct-answer">Correct: "{item.sentence}"</span>
+                          </>
+                        ) : (
+                          <span className="status-skipped">⏭️ Skipped - Answer: "{item.sentence}"</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="download-controls">
+            <button onClick={downloadResults} className="download-button">
+              📥 Download Results (.txt)
+            </button>
+            <button onClick={restartGame} className="restart-button">
+              🔄 Play Again
+            </button>
+          </div>
         </div>
       )}
       
-      <div className="game-area">
-        <div className="scrambled-words">
-          <h4>Scrambled Words:</h4>
-          <div className="words-container">
-            {scrambledWords.map((word, index) => (
-              <button
-                key={index}
-                onClick={() => selectWord(word)}
-                className="word-bubble"
-                disabled={selectedWords.includes(word) || gameCompleted}
-              >
-                {word}
-              </button>
-            ))}
-          </div>
-        </div>
+      {!gameCompleted && (
+        <>
+          <div className="game-area">
+            <div className="scrambled-words">
+              <h4>Scrambled Words:</h4>
+              <div className="words-container">
+                {scrambledWords.map((word, index) => (
+                  <button
+                    key={index}
+                    onClick={() => selectWord(word)}
+                    className="word-bubble"
+                    disabled={selectedWords.includes(word) || gameCompleted}
+                  >
+                    {word}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="selected-words">
-          <h4>Your Sentence:</h4>
-          <div className="sentence-container">
-            {selectedWords.map((word, index) => (
-              <span 
-                key={index} 
-                className="selected-word"
-                onClick={() => removeWord(index)}
-              >
-                {word}
-              </span>
-            ))}
-          </div>
-        </div>
+            <div className="selected-words">
+              <h4>Your Sentence:</h4>
+              <div className="sentence-container">
+                {selectedWords.map((word, index) => (
+                  <span 
+                    key={index} 
+                    className="selected-word"
+                    onClick={() => removeWord(index)}
+                  >
+                    {word}
+                  </span>
+                ))}
+                {selectedWords.length === 0 && (
+                  <span className="placeholder">Click words above to build your sentence</span>
+                )}
+              </div>
+            </div>
 
-        {feedback && (
-          <div className={`feedback ${feedback.includes('🎉') ? 'correct' : 'incorrect'}`}>
-            {feedback}
-          </div>
-        )}
+            {feedback && (
+              <div className={`feedback ${feedback.includes('🎉') ? 'correct' : 'incorrect'}`}>
+                {feedback}
+              </div>
+            )}
 
-        <div className="game-controls">
-          {!gameCompleted ? (
-            <>
-              <button onClick={checkAnswer} className="check-button">
+            <div className="game-controls">
+              <button onClick={checkAnswer} className="check-button" disabled={selectedWords.length === 0}>
                 Check Answer
               </button>
-              <button onClick={startNewRound} className="new-round-button">
+              <button onClick={skipSentence} className="skip-button">
                 Skip Sentence
               </button>
-            </>
-          ) : (
-            <button onClick={restartGame} className="restart-button">
-              Play Again
-            </button>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -463,7 +621,7 @@ function MemoryMatchGame({ saveGameScore }) {
 
   React.useEffect(() => {
     // Check if game should end (11 moves or all matched)
-    if (moves >= 11 || matched.length === cards.length && cards.length > 0) {
+    if (moves >= 11 || (matched.length === cards.length && cards.length > 0)) {
       endGame();
     }
   }, [moves, matched, cards.length]);

@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import './Auth.css';
 
 const ChangePassword = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    current_password: '',
-    new_password: '',
-    confirm_password: ''
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
   });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
 
   const handleChange = (e) => {
     setFormData({
@@ -27,14 +29,14 @@ const ChangePassword = () => {
     setError('');
     setMessage('');
 
-    if (formData.new_password !== formData.confirm_password) {
+    if (formData.newPassword !== formData.confirmPassword) {
       setError('New passwords do not match');
       setLoading(false);
       return;
     }
 
-    if (formData.new_password.length < 6) {
-      setError('New password must be at least 6 characters long');
+    if (formData.newPassword.length < 6) {
+      setError('Password must be at least 6 characters long');
       setLoading(false);
       return;
     }
@@ -42,15 +44,23 @@ const ChangePassword = () => {
     try {
       const response = await axios.post('http://localhost:5000/api/change-password', {
         user_id: user.user_id,
-        current_password: formData.current_password,
-        new_password: formData.new_password
+        current_password: formData.currentPassword,
+        new_password: formData.newPassword
       });
-      setMessage('Password changed successfully!');
-      setFormData({
-        current_password: '',
-        new_password: '',
-        confirm_password: ''
-      });
+
+      if (response.status === 200) {
+        setMessage('✅ Password changed successfully!');
+        setFormData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        
+        // Redirect to dashboard after 2 seconds
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
+      }
     } catch (error) {
       setError(error.response?.data?.error || 'Failed to change password');
     } finally {
@@ -59,10 +69,10 @@ const ChangePassword = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
+    <div className="change-password-page">
+      <div className="change-password-card">
         <h2>Change Password</h2>
-        <p className="auth-subtitle">Update your password</p>
+        <p className="auth-subtitle">Update your account password</p>
         
         {error && <div className="error-message">{error}</div>}
         {message && <div className="success-message">{message}</div>}
@@ -72,12 +82,12 @@ const ChangePassword = () => {
             <label>Current Password</label>
             <input
               type="password"
-              name="current_password"
-              value={formData.current_password}
+              name="currentPassword"
+              value={formData.currentPassword}
               onChange={handleChange}
               required
               className="child-friendly-input"
-              placeholder="Enter your current password"
+              placeholder="Enter current password"
             />
           </div>
           
@@ -85,12 +95,12 @@ const ChangePassword = () => {
             <label>New Password</label>
             <input
               type="password"
-              name="new_password"
-              value={formData.new_password}
+              name="newPassword"
+              value={formData.newPassword}
               onChange={handleChange}
               required
               className="child-friendly-input"
-              placeholder="Enter new password"
+              placeholder="Enter new password (min. 6 characters)"
             />
           </div>
           
@@ -98,8 +108,8 @@ const ChangePassword = () => {
             <label>Confirm New Password</label>
             <input
               type="password"
-              name="confirm_password"
-              value={formData.confirm_password}
+              name="confirmPassword"
+              value={formData.confirmPassword}
               onChange={handleChange}
               required
               className="child-friendly-input"
@@ -115,6 +125,13 @@ const ChangePassword = () => {
             {loading ? 'Changing Password...' : 'Change Password'}
           </button>
         </form>
+        
+        <button 
+          className="back-btn"
+          onClick={() => navigate('/dashboard')}
+        >
+          ← Back to Dashboard
+        </button>
       </div>
     </div>
   );

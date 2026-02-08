@@ -1,51 +1,62 @@
+/* Progress.css - Updated with Theme Support */
+
 .progress-container {
-  min-height: 100vh;
-  padding: 40px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: calc(100vh - 60px);
+  padding: 30px 20px;
+  background: var(--bg-gradient);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .progress-container h2 {
-  color: white;
-  font-size: 36px;
+  color: var(--text-primary);
+  font-size: 2.5rem;
   text-align: center;
-  margin-bottom: 40px;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  margin-bottom: 30px;
+  font-weight: 700;
 }
 
+/* Progress Summary */
 .progress-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+  gap: 25px;
   margin-bottom: 40px;
-  max-width: 1000px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .summary-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--card-bg);
   padding: 25px;
   border-radius: 20px;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.1);
 }
 
 .summary-card h3 {
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 20px;
-  font-size: 20px;
+  font-size: 1.3rem;
+  font-weight: 700;
 }
 
+/* Progress Circle */
 .progress-circle {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: conic-gradient(#4CAF50 75%, #e0e0e0 0);
+  background: conic-gradient(var(--primary-color) 0% 75%, var(--border-color) 75% 100%);
+  position: relative;
+  margin: 0 auto 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto;
-  position: relative;
 }
 
 .progress-circle::before {
@@ -53,162 +64,136 @@
   position: absolute;
   width: 90px;
   height: 90px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 50%;
+  top: 15px;
+  left: 15px;
 }
 
 .progress-value {
   position: relative;
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
+  z-index: 2;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--primary-color);
 }
 
+/* Skill Score */
 .skill-score {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 }
 
-.score {
-  display: block;
-  font-size: 28px;
-  font-weight: bold;
-  color: #4CAF50;
-  margin-bottom: 10px;
+.skill-score .score {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
 .progress-bar {
   width: 100%;
-  height: 20px;
-  background: #e0e0e0;
-  border-radius: 10px;
+  height: 10px;
+  background: var(--accent-bg);
+  border-radius: 5px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4CAF50, #45a049);
-  border-radius: 10px;
+  background: linear-gradient(90deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 70%, white 30%));
+  border-radius: 5px;
   transition: width 0.5s ease;
 }
 
+/* Progress Details */
 .progress-details {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   gap: 30px;
-  max-width: 1000px;
-  margin: 0 auto 40px;
+  margin-bottom: 40px;
 }
 
-.test-results-section, .game-scores-section {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 25px;
+.test-results-section,
+.game-scores-section {
+  background: var(--card-bg);
+  padding: 30px;
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  border: 1px solid var(--border-color);
 }
 
-.test-results-section h3, .game-scores-section h3 {
-  color: #333;
-  margin-bottom: 20px;
-  text-align: center;
-  font-size: 24px;
+.test-results-section h3,
+.game-scores-section h3 {
+  color: var(--text-primary);
+  margin-bottom: 25px;
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
-.results-grid, .scores-grid {
+.results-grid,
+.scores-grid {
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
 
-.result-card, .score-card {
-  background: #f8f9fa;
-  padding: 15px;
+.result-card,
+.score-card {
+  background: var(--accent-bg);
+  padding: 20px;
   border-radius: 15px;
-  border: 2px solid #e9ecef;
-  display: flex;
-  justify-content: space-between;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.result-card:hover,
+.score-card:hover {
+  transform: translateX(5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.result-card {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
+  gap: 15px;
 }
 
-.test-type, .game-name {
-  font-weight: bold;
-  color: #333;
+.test-type {
+  color: var(--text-primary);
+  font-weight: 600;
   text-transform: capitalize;
+  font-size: 1.1rem;
 }
 
-.test-score, .game-score {
-  color: #4CAF50;
-  font-weight: bold;
+.test-score {
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 1.2rem;
 }
 
-.test-date, .game-level {
-  color: #666;
-  font-size: 14px;
+.test-date {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
-.recommendations {
-  max-width: 1000px;
-  margin: 0 auto;
+/* Game Score Cards */
+.score-card {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
-.recommendations h3 {
-  color: white;
-  text-align: center;
-  margin-bottom: 20px;
-  font-size: 28px;
-}
-
-.recommendation-card {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 25px;
-  border-radius: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-}
-
-.recommendation-card h4 {
-  color: #333;
-  margin-bottom: 15px;
-  font-size: 20px;
-}
-
-.recommendation-card ul {
-  list-style: none;
-  padding: 0;
-}
-
-.recommendation-card li {
-  padding: 8px 0;
-  color: #666;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.recommendation-card li:last-child {
-  border-bottom: none;
-}
-
-.recommendation-card li::before {
-  content: '✓ ';
-  color: #4CAF50;
-  font-weight: bold;
-}
-
-.loading {
-  text-align: center;
-  color: white;
-  font-size: 20px;
-  padding: 40px;
-}
-
-/* Game Scores Specific Styles */
 .game-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 15px;
 }
 
 .game-icon {
-  font-size: 24px;
+  font-size: 2rem;
 }
 
 .game-info {
@@ -216,91 +201,228 @@
 }
 
 .game-name {
+  color: var(--text-primary);
   font-weight: 600;
-  color: var(--dark);
-  font-size: 16px;
+  font-size: 1.1rem;
+  text-transform: capitalize;
 }
 
 .game-level {
-  color: var(--gray);
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 .game-score {
+  color: var(--primary-color);
   font-weight: 700;
-  color: var(--primary);
-  font-size: 18px;
+  font-size: 1.3rem;
   text-align: center;
-  margin: 8px 0;
+  background: rgba(139, 92, 246, 0.1);
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
 }
 
 .game-date {
-  color: var(--gray);
-  font-size: 12px;
-  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-align: right;
 }
 
-.score-card {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 15px;
-  border: 2px solid #e9ecef;
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.score-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-  border-color: var(--primary);
-}
-
-/* Empty State Styles */
+/* Empty State */
 .empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: var(--gray);
+  background: var(--accent-bg);
+  border-radius: 15px;
+  border: 2px dashed var(--border-color);
 }
 
 .empty-state p {
-  margin-bottom: 8px;
-  font-size: 18px;
+  color: var(--text-secondary);
+  margin: 10px 0;
+  font-size: 1.1rem;
 }
 
 .empty-state .subtext {
-  font-size: 14px;
-  opacity: 0.7;
+  font-size: 0.9rem;
+  opacity: 0.8;
 }
 
-/* Progress Summary Improvements */
-.skill-score .score {
-  font-size: 32px;
+/* Recommendations */
+.recommendations {
+  background: var(--card-bg);
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  border: 1px solid var(--border-color);
+}
+
+.recommendations h3 {
+  color: var(--text-primary);
+  margin-bottom: 25px;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.recommendation-card {
+  background: var(--accent-bg);
+  padding: 25px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color);
+}
+
+.recommendation-card h4 {
+  color: var(--text-primary);
   margin-bottom: 15px;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
-.progress-bar {
-  width: 100%;
-  height: 12px;
-  background: #e0e0e0;
-  border-radius: 6px;
-  overflow: hidden;
+.recommendation-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--primary-dark));
-  border-radius: 6px;
-  transition: width 0.5s ease;
+.recommendation-card li {
+  color: var(--text-secondary);
+  padding: 8px 0;
+  padding-left: 25px;
+  position: relative;
+  line-height: 1.5;
 }
 
+.recommendation-card li::before {
+  content: "•";
+  color: var(--primary-color);
+  font-size: 1.5rem;
+  position: absolute;
+  left: 0;
+  top: 4px;
+}
+
+/* Loading State */
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid var(--border-color);
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Best Scores Section */
+.best-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.best-score-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--accent-bg);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.best-score-item span:first-child {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.best-score-item span:last-child {
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
+  .progress-container {
+    padding: 20px 15px;
+  }
+  
+  .progress-container h2 {
+    font-size: 2rem;
+  }
+  
+  .progress-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  
   .progress-details {
     grid-template-columns: 1fr;
   }
   
+  .result-card {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+  }
+  
+  .test-date {
+    grid-column: 1;
+    grid-row: 2;
+    text-align: left;
+  }
+  
+  .test-score {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+}
+
+@media (max-width: 480px) {
   .progress-summary {
     grid-template-columns: 1fr;
+  }
+  
+  .summary-card {
+    padding: 20px;
+  }
+  
+  .test-results-section,
+  .game-scores-section,
+  .recommendations {
+    padding: 20px;
+  }
+  
+  .progress-circle {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .progress-circle::before {
+    width: 70px;
+    height: 70px;
+    top: 15px;
+    left: 15px;
+  }
+  
+  .progress-value {
+    font-size: 1.8rem;
+  }
+  
+  .skill-score .score {
+    font-size: 2rem;
   }
 }
