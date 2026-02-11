@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import './Tests.css';
@@ -15,8 +15,46 @@ const Tests = () => {
   const [currentDifficulty, setCurrentDifficulty] = useState(1.0);
   const [adaptiveContent, setAdaptiveContent] = useState([]);
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
+  const [recognition, setRecognition] = useState(null);
+  const [browserSupport, setBrowserSupport] = useState(true);
 
-  // Fetch adaptive content based on difficulty
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      
+      recognitionInstance.lang = 'en-US';
+      recognitionInstance.continuous = true;
+      recognitionInstance.interimResults = true;
+      recognitionInstance.maxAlternatives = 1;
+      
+      recognitionInstance.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0].transcript)
+          .join(' ');
+        setSpokenText(transcript);
+      };
+      
+      recognitionInstance.onend = () => {
+        setIsRecording(false);
+      };
+      
+      recognitionInstance.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+        if (event.error === 'not-allowed') {
+          alert('Please allow microphone access to use speech recognition.');
+        }
+      };
+      
+      setRecognition(recognitionInstance);
+    } else {
+      setBrowserSupport(false);
+    }
+  }, []);
+
+  // Fetch adaptive content
   useEffect(() => {
     if (user && user.user_type === 'child') {
       fetchAdaptiveContent();
@@ -37,10 +75,9 @@ const Tests = () => {
       setCurrentDifficulty(response.data.difficulty_level);
     } catch (error) {
       console.error('Error fetching adaptive content:', error);
-      // Fallback content
       const fallbackContent = activeTab === 'speech' 
-        ? ["The cat sleeps", "We eat food", "Birds fly high"]
-        : ["Hello world", "Good morning", "How are you"];
+        ? ["The cat sleeps", "We eat food", "Birds fly high", "I love my family", "The sun is bright"]
+        : ["Hello world", "Good morning", "How are you", "Thank you", "See you later"];
       setAdaptiveContent(fallbackContent);
     }
   };
@@ -55,32 +92,37 @@ const Tests = () => {
   };
 
   const startSpeechTest = () => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      
-      recognition.lang = 'en-US';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-      
-      recognition.onstart = () => {
-        setIsRecording(true);
-        setSpokenText('');
-      };
-      
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setSpokenText(transcript);
-      };
-      
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-      
-      recognition.start();
-    } else {
-      alert('Speech recognition not supported in this browser. Try Chrome or Edge.');
+    if (!browserSupport) {
+      alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
+      return;
     }
+
+    if (!recognition) {
+      alert('Speech recognition is not initialized. Please refresh the page.');
+      return;
+    }
+
+    setSpokenText('');
+    setIsRecording(true);
+    
+    try {
+      recognition.start();
+    } catch (error) {
+      console.error('Error starting recognition:', error);
+      setIsRecording(false);
+      alert('Error starting speech recognition. Please try again.');
+    }
+  };
+
+  const stopSpeechTest = () => {
+    if (recognition && isRecording) {
+      try {
+        recognition.stop();
+      } catch (error) {
+        console.error('Error stopping recognition:', error);
+      }
+    }
+    setIsRecording(false);
   };
 
   const submitSpeechTest = async () => {
@@ -95,8 +137,7 @@ const Tests = () => {
       const response = await axios.post('http://localhost:5000/api/speech-test', {
         user_id: user.user_id,
         spoken_text: spokenText,
-        original_text: originalText,
-        time_spent: 30
+        original_text: originalText
       });
 
       setResult({
@@ -107,12 +148,10 @@ const Tests = () => {
         newDifficulty: response.data.new_difficulty
       });
       
-      // Update difficulty
       if (response.data.new_difficulty) {
         setCurrentDifficulty(response.data.new_difficulty);
       }
       
-      // Move to next sentence
       setCurrentSentenceIndex(prev => prev + 1);
     } catch (error) {
       console.error('Error submitting speech test:', error);
@@ -128,14 +167,20 @@ const Tests = () => {
       const sentence = getCurrentSentence();
       const utterance = new SpeechSynthesisUtterance(sentence);
       utterance.rate = 0.8;
+      utterance.pitch = 1;
       
       utterance.onend = () => {
         setIsPlaying(false);
       };
       
+      utterance.onerror = () => {
+        setIsPlaying(false);
+        alert('Error playing audio. Please try again.');
+      };
+      
       speechSynthesis.speak(utterance);
     } else {
-      alert('Text-to-speech not supported in this browser. Try Chrome or Edge.');
+      alert('Text-to-speech is not supported in your browser. Please use Chrome or Edge.');
     }
   };
 
@@ -161,12 +206,10 @@ const Tests = () => {
         newDifficulty: response.data.new_difficulty
       });
       
-      // Update difficulty
       if (response.data.new_difficulty) {
         setCurrentDifficulty(response.data.new_difficulty);
       }
       
-      // Move to next sentence
       setCurrentSentenceIndex(prev => prev + 1);
     } catch (error) {
       console.error('Error submitting listening test:', error);
@@ -177,19 +220,52 @@ const Tests = () => {
   };
 
   const nextSentence = () => {
-    setCurrentSentenceIndex(prev => prev + 1);
     setResult(null);
     setSpokenText('');
     setTypedText('');
+    setCurrentSentenceIndex(prev => prev + 1);
+  };
+
+  const resetTest = () => {
+    setResult(null);
+    setSpokenText('');
+    setTypedText('');
+    setCurrentSentenceIndex(0);
+    fetchAdaptiveContent();
   };
 
   const getDifficultyLabel = (difficulty) => {
+    if (!difficulty) return 'Beginner';
     if (difficulty < 1.3) return 'Beginner';
     if (difficulty < 1.8) return 'Easy';
     if (difficulty < 2.3) return 'Medium';
     if (difficulty < 2.8) return 'Hard';
     return 'Expert';
   };
+
+  if (!browserSupport && activeTab === 'speech') {
+    return (
+      <div className="tests-container">
+        <div className="tests-header">
+          <h1>🧪 Adaptive Tests</h1>
+          <p>Practice your speech and listening skills at your level</p>
+        </div>
+        <div className="error-message">
+          <h3>Browser Not Supported</h3>
+          <p>Speech recognition is not supported in your browser.</p>
+          <p>Please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> for the best experience.</p>
+          <div className="tests-tabs">
+            <button 
+              className={`tab-btn ${activeTab === 'listening' ? 'active' : ''}`}
+              onClick={() => setActiveTab('listening')}
+            >
+              👂 Listening Test
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="tests-container">
@@ -202,7 +278,7 @@ const Tests = () => {
           <div className="difficulty-bar">
             <div 
               className="difficulty-fill" 
-              style={{ width: `${(currentDifficulty - 0.5) / 2.5 * 100}%` }}
+              style={{ width: `${((currentDifficulty - 0.5) / 2.5) * 100}%` }}
             ></div>
           </div>
         </div>
@@ -213,8 +289,7 @@ const Tests = () => {
           className={`tab-btn ${activeTab === 'speech' ? 'active' : ''}`}
           onClick={() => {
             setActiveTab('speech');
-            setCurrentSentenceIndex(0);
-            setResult(null);
+            resetTest();
           }}
         >
           🎤 Speech Test
@@ -223,8 +298,7 @@ const Tests = () => {
           className={`tab-btn ${activeTab === 'listening' ? 'active' : ''}`}
           onClick={() => {
             setActiveTab('listening');
-            setCurrentSentenceIndex(0);
-            setResult(null);
+            resetTest();
           }}
         >
           👂 Listening Test
@@ -237,15 +311,15 @@ const Tests = () => {
             <div className="test-instructions">
               <h3>Speech Test Instructions</h3>
               <ol>
-                <li>Click "Start Recording" to begin</li>
-                <li>Read the sentence below clearly</li>
-                <li>Click "Stop Recording" when finished</li>
-                <li>Submit your test to see your score</li>
+                <li>Click "Start Recording" and allow microphone access</li>
+                <li>Read the sentence below clearly and completely</li>
+                <li>Click "Stop Recording" when you're finished</li>
+                <li>Click "Submit Test" to see your score</li>
               </ol>
             </div>
 
             <div className="sentence-display">
-              <h4>Read this sentence:</h4>
+              <h4>Read this sentence aloud:</h4>
               <div className="sentence-box">
                 "{getCurrentSentence()}"
               </div>
@@ -256,22 +330,24 @@ const Tests = () => {
             </div>
 
             <div className="recording-section">
-              <button 
-                className={`record-btn ${isRecording ? 'recording' : ''}`}
-                onClick={startSpeechTest}
-                disabled={isRecording}
-              >
-                {isRecording ? '🔴 Recording...' : '🎤 Start Recording'}
-              </button>
+              <div className="recording-controls">
+                <button 
+                  className={`record-btn ${isRecording ? 'recording' : ''}`}
+                  onClick={isRecording ? stopSpeechTest : startSpeechTest}
+                  disabled={loading}
+                >
+                  {isRecording ? '🔴 Stop Recording' : '🎤 Start Recording'}
+                </button>
+              </div>
               
               <div className="spoken-text">
                 <h4>Your Speech:</h4>
-                <textarea 
-                  value={spokenText}
-                  onChange={(e) => setSpokenText(e.target.value)}
-                  placeholder="Your spoken text will appear here..."
-                  rows="3"
-                />
+                <div className="transcript-box">
+                  {spokenText || 'Your spoken text will appear here as you speak...'}
+                </div>
+                <small className="hint-text">
+                  {isRecording ? '🎤 Recording in progress...' : 'Recording stopped'}
+                </small>
               </div>
             </div>
 
@@ -289,34 +365,39 @@ const Tests = () => {
               <h3>Listening Test Instructions</h3>
               <ol>
                 <li>Click "Play Audio" to hear the sentence</li>
+                <li>Listen carefully to the entire sentence</li>
                 <li>Type exactly what you hear</li>
-                <li>Submit your test to see your score</li>
+                <li>Click "Submit Test" to see your score</li>
               </ol>
             </div>
 
-            <div className="audio-section">
-              <button 
-                className="play-audio-btn"
-                onClick={playListeningAudio}
-                disabled={isPlaying}
-              >
-                {isPlaying ? '🔊 Playing...' : '▶️ Play Audio'}
-              </button>
-              
-              <div className="type-section">
-                <h4>Type what you hear:</h4>
-                <textarea 
-                  value={typedText}
-                  onChange={(e) => setTypedText(e.target.value)}
-                  placeholder="Type the sentence you hear..."
-                  rows="4"
-                />
+            <div className="sentence-display">
+              <h4>Listen to this sentence:</h4>
+              <div className="audio-controls">
+                <button 
+                  className="play-audio-btn"
+                  onClick={playListeningAudio}
+                  disabled={isPlaying || loading}
+                >
+                  {isPlaying ? '🔊 Playing...' : '▶️ Play Audio'}
+                </button>
               </div>
-              
               <div className="difficulty-info">
                 Level: {getDifficultyLabel(currentDifficulty)} | 
                 Sentence {currentSentenceIndex + 1} of {adaptiveContent.length}
               </div>
+            </div>
+
+            <div className="type-section">
+              <h4>Type what you hear:</h4>
+              <textarea 
+                value={typedText}
+                onChange={(e) => setTypedText(e.target.value)}
+                placeholder="Type the sentence you hear here..."
+                rows="4"
+                className="type-input"
+                disabled={loading}
+              />
             </div>
 
             <button 
@@ -347,19 +428,25 @@ const Tests = () => {
                   <span className="result-value">{result.wordsPerMinute.toFixed(1)}</span>
                 </div>
               )}
-              {result.newDifficulty && (
-                <div className="result-item">
-                  <span className="result-label">New Level:</span>
-                  <span className="result-value">{getDifficultyLabel(result.newDifficulty)}</span>
-                </div>
-              )}
+              <div className="result-item">
+                <span className="result-label">New Level:</span>
+                <span className="result-value">{getDifficultyLabel(result.newDifficulty)}</span>
+              </div>
             </div>
-            <button 
-              className="try-again-btn"
-              onClick={nextSentence}
-            >
-              Next Sentence
-            </button>
+            <div className="result-actions">
+              <button 
+                className="try-again-btn"
+                onClick={nextSentence}
+              >
+                Next Sentence
+              </button>
+              <button 
+                className="reset-btn"
+                onClick={resetTest}
+              >
+                Start Over
+              </button>
+            </div>
           </div>
         )}
       </div>

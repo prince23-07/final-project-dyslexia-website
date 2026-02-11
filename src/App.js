@@ -10,7 +10,6 @@ import Progress from './components/Progress';
 import ForgotPassword from './components/ForgotPassword';
 import ChangePassword from './components/ChangePassword';
 import ParentDashboard from './components/ParentDashboard';
-import LearningSidebar from './components/LearningSidebar';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -38,7 +37,6 @@ function MainLayout({ children }) {
   const location = useLocation();
   const [showUserPopup, setShowUserPopup] = useState(false);
   const [theme, setTheme] = useState('soothing');
-  const [showLearningSidebar, setShowLearningSidebar] = useState(true);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   const isParent = user.user_type === 'parent';
@@ -64,14 +62,47 @@ function MainLayout({ children }) {
   };
 
   const menuItems = [
-    { path: '/dashboard', label: '🏠 Dashboard', icon: '🏠', visible: true },
-    { path: '/parent-dashboard', label: '👨‍👩‍👧‍👦 Parent Dashboard', icon: '👨‍👩‍👧‍👦', visible: isParent },
-    { path: '/tests', label: '🧪 Tests', icon: '🧪', visible: isChild },
-    { path: '/games', label: '🎮 Games', icon: '🎮', visible: isChild },
-    { path: '/progress', label: '📊 My Progress', icon: '📊', visible: isChild },
+    { 
+      path: '/dashboard', 
+      label: 'Dashboard', 
+      icon: '🏠', 
+      visible: true,
+      forParent: true,
+      forChild: true
+    },
+    { 
+      path: '/parent-dashboard', 
+      label: 'Parent Dashboard', 
+      icon: '👨‍👩‍👧‍👦', 
+      visible: isParent,
+      forParent: true,
+      forChild: false
+    },
+    { 
+      path: '/tests', 
+      label: 'Tests', 
+      icon: '🧪', 
+      visible: isChild,
+      forParent: false,
+      forChild: true
+    },
+    { 
+      path: '/games', 
+      label: 'Games', 
+      icon: '🎮', 
+      visible: isChild,
+      forParent: false,
+      forChild: true
+    },
+    { 
+      path: '/progress', 
+      label: 'My Progress', 
+      icon: '📊', 
+      visible: isChild,
+      forParent: false,
+      forChild: true
+    },
   ];
-
-  const shouldShowLearningSidebar = isChild && windowWidth >= 1200 && showLearningSidebar;
 
   return (
     <div className={`app-container theme-${theme}`}>
@@ -105,23 +136,6 @@ function MainLayout({ children }) {
             </button>
           </div>
           <span className="user-greeting">Welcome, {user.username}!</span>
-          {isChild && windowWidth < 1200 && (
-            <button 
-              className="toggle-learning-btn"
-              onClick={() => setShowLearningSidebar(!showLearningSidebar)}
-              style={{
-                background: 'var(--primary-color)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                cursor: 'pointer',
-                marginRight: '10px'
-              }}
-            >
-              {showLearningSidebar ? '✕ Close Learning' : '🔤 Learning Hub'}
-            </button>
-          )}
           <button 
             className="change-password-btn"
             onClick={() => navigate('/change-password')}
@@ -135,7 +149,7 @@ function MainLayout({ children }) {
       </nav>
 
       <div className="main-content">
-        {/* Left Sidebar */}
+        {/* Left Sidebar - Navigation */}
         <aside className="sidebar">
           <div className="sidebar-header">
             <h3>Navigation</h3>
@@ -173,10 +187,7 @@ function MainLayout({ children }) {
               <div className="user-popup" onClick={(e) => e.stopPropagation()}>
                 <button 
                   className="close-popup-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowUserPopup(false);
-                  }}
+                  onClick={() => setShowUserPopup(false)}
                 >
                   ✕
                 </button>
@@ -230,19 +241,8 @@ function MainLayout({ children }) {
           )}
         </aside>
 
-        {/* Learning Sidebar */}
-        {isChild && (
-          <>
-            {(shouldShowLearningSidebar || (windowWidth < 1200 && showLearningSidebar)) && (
-              <LearningSidebar />
-            )}
-          </>
-        )}
-
         {/* Main Content Area */}
-        <main className="content-area" style={{ 
-          marginLeft: shouldShowLearningSidebar ? '520px' : '240px'
-        }}>
+        <main className="content-area">
           {children}
         </main>
       </div>

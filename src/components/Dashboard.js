@@ -12,10 +12,18 @@ const Dashboard = () => {
     loading: true
   });
   const [blocks, setBlocks] = useState([]);
+  const [selectedBlock, setSelectedBlock] = useState(null);
 
   useEffect(() => {
     if (user && user.user_type === 'child') {
       fetchDashboardData();
+    } else {
+      setDashboardData({
+        highestScores: null,
+        learningMetrics: null,
+        learningBlocks: [],
+        loading: false
+      });
     }
   }, [user]);
 
@@ -25,9 +33,6 @@ const Dashboard = () => {
       
       const { highest_scores, learning_metrics, learning_blocks } = response.data;
       
-      // Check if we have real data or need to show zeros
-      const hasRealData = learning_metrics && learning_metrics.total_learning_time > 0;
-      
       setDashboardData({
         highestScores: highest_scores || {
           speech_test: 0,
@@ -36,13 +41,12 @@ const Dashboard = () => {
           memory_match: 0,
           spelling_bee: 0
         },
-        learningMetrics: hasRealData ? learning_metrics : {
+        learningMetrics: learning_metrics || {
           streak: 0,
           longest_streak: 0,
           total_learning_time: 0,
           today_learning: 0,
           improvement_rate: 0,
-          test_improvement: 0,
           blocks_earned: 0,
           daily_goal: false,
           daily_goal_target: 60
@@ -51,22 +55,13 @@ const Dashboard = () => {
         loading: false
       });
       
-      // Generate blocks visualization
-      if (hasRealData && learning_blocks && learning_blocks.length > 0) {
-        const newBlocks = learning_blocks.map(block => ({
-          id: block.date,
-          filled: block.filled,
-          intensity: block.intensity,
-          minutes: block.minutes
-        }));
-        setBlocks(newBlocks);
+      if (learning_blocks && learning_blocks.length > 0) {
+        setBlocks(learning_blocks);
       } else {
-        // Show empty blocks for new users
         generateEmptyBlocks();
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      // Show zeros for new users
       setDashboardData({
         highestScores: {
           speech_test: 0,
@@ -81,7 +76,6 @@ const Dashboard = () => {
           total_learning_time: 0,
           today_learning: 0,
           improvement_rate: 0,
-          test_improvement: 0,
           blocks_earned: 0,
           daily_goal: false,
           daily_goal_target: 60
@@ -96,10 +90,14 @@ const Dashboard = () => {
   const generateEmptyBlocks = () => {
     const totalBlocks = 150;
     const newBlocks = [];
+    const endDate = new Date();
     
     for (let i = 0; i < totalBlocks; i++) {
+      const date = new Date(endDate);
+      date.setDate(endDate.getDate() - (149 - i));
+      
       newBlocks.push({
-        id: i,
+        date: date.toISOString().split('T')[0],
         filled: false,
         intensity: 0,
         minutes: 0
@@ -133,6 +131,27 @@ const Dashboard = () => {
     };
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const getIntensityColor = (intensity) => {
+    switch(intensity) {
+      case 0: return '#ebedf0';
+      case 1: return '#9be9a8';
+      case 2: return '#40c463';
+      case 3: return '#30a14e';
+      case 4: return '#216e39';
+      default: return '#ebedf0';
+    }
+  };
+
   if (dashboardData.loading) {
     return (
       <div className="dashboard-container">
@@ -141,8 +160,25 @@ const Dashboard = () => {
     );
   }
 
+  if (user.user_type === 'parent') {
+    return (
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <h1>👋 Welcome, {user.username}!</h1>
+          <p>Please visit the Parent Dashboard to view your children's progress</p>
+        </div>
+      </div>
+    );
+  }
+
   const { highestScores, learningMetrics } = dashboardData;
   const todayProgress = getTodayProgress();
+
+  // Group blocks by week for LeetCode style display
+  const weeks = [];
+  for (let i = 0; i < Math.ceil(blocks.length / 7); i++) {
+    weeks.push(blocks.slice(i * 7, (i + 1) * 7));
+  }
 
   return (
     <div className="dashboard-container">
@@ -153,7 +189,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Streak Section */}
+      {/* Streak Section - LeetCode Style */}
       <div className="streak-section">
         <div className="streak-card">
           <div className="streak-icon">🔥</div>
@@ -177,9 +213,9 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Scores Section */}
+      {/* Highest Scores Section - FIXED */}
       <div className="scores-section">
-        <h2>📊 Your Scores</h2>
+        <h2>🏆 Your Highest Scores</h2>
         <div className="scores-grid">
           <div className="score-card">
             <div className="score-icon">🎤</div>
@@ -200,14 +236,14 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="score-card">
-            <div className="score-icon">🧠</div>
+            <div className="score-icon">🧩</div>
             <div className="score-info">
               <span className="score-label">Memory Match</span>
               <span className="score-value">{highestScores?.memory_match || 0}</span>
             </div>
           </div>
           <div className="score-card">
-            <div className="score-icon">🔠</div>
+            <div className="score-icon">🔤</div>
             <div className="score-info">
               <span className="score-label">Word Jumble</span>
               <span className="score-value">{highestScores?.word_jumble || 0}</span>
@@ -240,7 +276,7 @@ const Dashboard = () => {
           <div className="metric-card">
             <div className="metric-icon">⏱️</div>
             <div className="metric-content">
-              <h4>Time Spent</h4>
+              <h4>Total Time</h4>
               <p className="metric-value">{formatTime(learningMetrics?.total_learning_time || 0)}</p>
               <p className="metric-description">
                 {learningMetrics.total_learning_time > 0 ? 'Total learning time' : 'Start learning today!'}
@@ -266,43 +302,85 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Learning Blocks Visualization */}
+      {/* LeetCode Style Activity Calendar */}
       <div className="blocks-section">
-        <h2>🏗️ Learning Blocks</h2>
+        <h2>📅 Learning Activity Calendar</h2>
         <p className="blocks-description">
-          Each block represents 30 minutes of learning. Build your knowledge tower!
+          {learningMetrics.streak > 0 
+            ? `🔥 ${learningMetrics.streak} day streak! Keep it up!` 
+            : 'Start learning today to build your streak!'}
         </p>
-        <div className="blocks-grid">
-          {blocks.map((block, index) => (
-            <div
-              key={block.id || index}
-              className={`learning-block block-intensity-${block.intensity || 0}`}
-              title={block.filled ? `${block.minutes || 30} minutes of learning` : 'No learning yet'}
-            />
-          ))}
+        
+        <div className="calendar-container">
+          <div className="calendar-months">
+            {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(month => (
+              <span key={month} className="calendar-month">{month}</span>
+            ))}
+          </div>
+          
+          <div className="calendar-grid">
+            <div className="calendar-days">
+              {['Mon', 'Wed', 'Fri'].map(day => (
+                <span key={day} className="calendar-day-label">{day}</span>
+              ))}
+            </div>
+            
+            <div className="calendar-weeks">
+              {weeks.map((week, weekIndex) => (
+                <div key={weekIndex} className="calendar-week">
+                  {week.map((block, dayIndex) => (
+                    <div
+                      key={`${weekIndex}-${dayIndex}`}
+                      className="calendar-block"
+                      style={{ 
+                        backgroundColor: getIntensityColor(block.intensity),
+                        opacity: block.filled ? 1 : 0.3
+                      }}
+                      title={`${formatDate(block.date)}: ${block.minutes} minutes of learning`}
+                      onClick={() => setSelectedBlock(block)}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="calendar-legend">
+            <div className="legend-item">
+              <span className="legend-label">Less</span>
+              <div className="legend-colors">
+                <div className="legend-block" style={{ backgroundColor: '#ebedf0' }}></div>
+                <div className="legend-block" style={{ backgroundColor: '#9be9a8' }}></div>
+                <div className="legend-block" style={{ backgroundColor: '#40c463' }}></div>
+                <div className="legend-block" style={{ backgroundColor: '#30a14e' }}></div>
+                <div className="legend-block" style={{ backgroundColor: '#216e39' }}></div>
+              </div>
+              <span className="legend-label">More</span>
+            </div>
+          </div>
         </div>
-        <div className="blocks-legend">
-          <div className="legend-item">
-            <div className="legend-block block-intensity-0"></div>
-            <span>No learning</span>
+
+        {selectedBlock && (
+          <div className="block-details">
+            <p>
+              <strong>{formatDate(selectedBlock.date)}</strong>: 
+              {selectedBlock.minutes > 0 
+                ? ` ${selectedBlock.minutes} minutes of learning` 
+                : ' No learning activity'}
+            </p>
+            <button onClick={() => setSelectedBlock(null)} className="close-details-btn">
+              ✕
+            </button>
           </div>
-          <div className="legend-item">
-            <div className="legend-block block-intensity-1"></div>
-            <span>30 min</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-block block-intensity-2"></div>
-            <span>1 hour</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-block block-intensity-3"></div>
-            <span>2+ hours</span>
-          </div>
-        </div>
+        )}
+
         <div className="blocks-summary">
           <p>
             <strong>{learningMetrics?.blocks_earned || 0} blocks</strong> earned 
             ({formatTime((learningMetrics?.blocks_earned || 0) * 30)} of learning)
+          </p>
+          <p className="summary-detail">
+            {blocks.filter(b => b.filled).length} active days in the last 150 days
           </p>
         </div>
       </div>
@@ -321,7 +399,7 @@ const Dashboard = () => {
           </div>
           <div className="tip-card">
             <span className="tip-icon">📚</span>
-            <p>30 minutes daily can fill one block on your tower</p>
+            <p>30 minutes daily can fill one block on your calendar</p>
           </div>
         </div>
       </div>

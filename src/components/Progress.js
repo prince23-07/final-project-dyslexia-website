@@ -7,45 +7,37 @@ const Progress = () => {
   const { user } = useAuth();
   const [progressData, setProgressData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [overallStats, setOverallStats] = useState({
-    totalTests: 0,
-    averageScore: 0,
-    gamesPlayed: 0,
-    bestGame: 0
-  });
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchProgress();
+    if (user && user.user_type === 'child') {
+      fetchProgress();
+    } else {
+      setLoading(false);
+    }
   }, [user]);
 
   const fetchProgress = async () => {
     try {
+      setLoading(true);
       const response = await axios.get(`http://localhost:5000/api/progress/${user.user_id}`);
+      console.log('Progress data received:', response.data);
       setProgressData(response.data);
-      calculateOverallStats(response.data);
+      setError('');
     } catch (error) {
       console.error('Error fetching progress:', error);
+      setError('Failed to load progress data. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateOverallStats = (data) => {
-    const testResults = data.test_results || [];
-    const gameScores = data.game_scores || [];
-    
-    const totalTests = testResults.length;
-    const totalTestScore = testResults.reduce((sum, test) => sum + test.score, 0);
-    const averageScore = totalTests > 0 ? totalTestScore / totalTests : 0;
-    
-    const gamesPlayed = gameScores.length;
-    const bestGame = gameScores.length > 0 ? Math.max(...gameScores.map(game => game.score)) : 0;
-
-    setOverallStats({
-      totalTests,
-      averageScore: Math.round(averageScore),
-      gamesPlayed,
-      bestGame
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
@@ -53,18 +45,24 @@ const Progress = () => {
     const icons = {
       'word_jumble': '🔤',
       'memory_match': '🧩',
-      'spelling_bee': '🐝',
-      'word_jumble': '🔤',
-      'memory_match': '🧩', 
       'spelling_bee': '🐝'
     };
     return icons[gameType] || '🎮';
   };
 
   const formatGameType = (gameType) => {
-    return gameType.split('_').map(word => 
+    return gameType.split('_').map(word =>
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
+  };
+
+  const getDifficultyLabel = (difficulty) => {
+    if (!difficulty) return 'Not set';
+    if (difficulty < 1.3) return 'Beginner';
+    if (difficulty < 1.8) return 'Easy';
+    if (difficulty < 2.3) return 'Medium';
+    if (difficulty < 2.8) return 'Hard';
+    return 'Expert';
   };
 
   if (loading) {
@@ -78,74 +76,146 @@ const Progress = () => {
     );
   }
 
-  // Add this to your Progress.js component (in the progress-summary section)
-<div className="summary-card">
-  <h3>🏆 Best Scores</h3>
-  <div className="best-scores">
-    <div className="best-score-item">
-      <span>Speech Test:</span>
-      <span>{overallStats.bestSpeech || 0}%</span>
-    </div>
-    <div className="best-score-item">
-      <span>Listening Test:</span>
-      <span>{overallStats.bestListening || 0}%</span>
-    </div>
-    <div className="best-score-item">
-      <span>Best Game:</span>
-      <span>{overallStats.bestGame || 0}</span>
-    </div>
-  </div>
-</div>
+  if (user.user_type === 'parent') {
+    return (
+      <div className="progress-container">
+        <h2>My Progress</h2>
+        <div className="empty-state">
+          <p>👨‍👩‍👧‍👦 Parent accounts don't have progress tracking</p>
+          <p className="subtext">Please visit the Parent Dashboard to view your children's progress</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="progress-container">
+        <h2>My Progress</h2>
+        <div className="error-message">
+          <p>{error}</p>
+          <button onClick={fetchProgress} className="retry-btn">
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!progressData) {
+    return (
+      <div className="progress-container">
+        <h2>My Progress</h2>
+        <div className="empty-state">
+          <p>📊 No progress data available yet</p>
+          <p className="subtext">Complete tests and play games to see your progress here!</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { test_results = [], game_scores = [], highest_scores = {}, current_difficulty = 1.0 } = progressData;
+  
+  const totalTests = test_results.length;
+  const totalGames = game_scores.length;
+  
+  const avgTestScore = test_results.length > 0 
+    ? test_results.reduce((sum, test) => sum + test.score, 0) / test_results.length 
+    : 0;
+  
+  const avgGameScore = game_scores.length > 0
+    ? game_scores.reduce((sum, game) => sum + game.score, 0) / game_scores.length
+    : 0;
 
   return (
     <div className="progress-container">
-      <h2>My Learning Progress</h2>
+      <h2>📊 My Learning Progress</h2>
       
-      {/* Overall Progress Summary */}
+      {/* Progress Summary */}
       <div className="progress-summary">
         <div className="summary-card">
-          <h3>📊 Overall Progress</h3>
-          <div className="progress-circle">
-            <span className="progress-value">{overallStats.averageScore}%</span>
-          </div>
-          <p>Average Score</p>
-        </div>
-
-        <div className="summary-card">
-          <h3>🎯 Tests Completed</h3>
-          <div className="skill-score">
-            <span className="score">{overallStats.totalTests}</span>
-            <div className="progress-bar">
+          <h3>🎯 Current Level</h3>
+          <div className="level-display">
+            <span className="level-badge">{getDifficultyLabel(current_difficulty)}</span>
+            <div className="difficulty-bar">
               <div 
-                className="progress-fill" 
-                style={{width: `${Math.min(overallStats.totalTests * 10, 100)}%`}}
+                className="difficulty-fill"
+                style={{ width: `${((current_difficulty - 0.5) / 2.5) * 100}%` }}
               ></div>
             </div>
           </div>
         </div>
 
         <div className="summary-card">
-          <h3>🎮 Games Played</h3>
-          <div className="skill-score">
-            <span className="score">{overallStats.gamesPlayed}</span>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill" 
-                style={{width: `${Math.min(overallStats.gamesPlayed * 20, 100)}%`}}
-              ></div>
-            </div>
+          <h3>📝 Tests</h3>
+          <div className="stat-display">
+            <span className="stat-number">{totalTests}</span>
+            <span className="stat-label">Completed</span>
           </div>
+          {totalTests > 0 && (
+            <div className="stat-detail">
+              <span>Average Score:</span>
+              <span className="stat-value">{avgTestScore.toFixed(1)}%</span>
+            </div>
+          )}
         </div>
 
         <div className="summary-card">
-          <h3>🏆 Best Game Score</h3>
-          <div className="skill-score">
-            <span className="score">{overallStats.bestGame}</span>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill" 
-                style={{width: `${Math.min(overallStats.bestGame, 100)}%`}}
-              ></div>
+          <h3>🎮 Games</h3>
+          <div className="stat-display">
+            <span className="stat-number">{totalGames}</span>
+            <span className="stat-label">Played</span>
+          </div>
+          {totalGames > 0 && (
+            <div className="stat-detail">
+              <span>Average Score:</span>
+              <span className="stat-value">{avgGameScore.toFixed(0)}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Highest Scores Section */}
+      <div className="highest-scores-section">
+        <h3>🏆 Highest Scores</h3>
+        <div className="highest-scores-grid">
+          <div className="highest-score-card">
+            <div className="score-icon">🎤</div>
+            <div className="score-details">
+              <span className="score-label">Speech Test</span>
+              <span className="score-value">
+                {highest_scores?.speech_test > 0 ? `${highest_scores.speech_test.toFixed(1)}%` : 'Not attempted'}
+              </span>
+            </div>
+          </div>
+          <div className="highest-score-card">
+            <div className="score-icon">👂</div>
+            <div className="score-details">
+              <span className="score-label">Listening Test</span>
+              <span className="score-value">
+                {highest_scores?.listening_test > 0 ? `${highest_scores.listening_test.toFixed(1)}%` : 'Not attempted'}
+              </span>
+            </div>
+          </div>
+          <div className="highest-score-card">
+            <div className="score-icon">🔤</div>
+            <div className="score-details">
+              <span className="score-label">Word Jumble</span>
+              <span className="score-value">{highest_scores?.word_jumble || 0}</span>
+            </div>
+          </div>
+          <div className="highest-score-card">
+            <div className="score-icon">🧩</div>
+            <div className="score-details">
+              <span className="score-label">Memory Match</span>
+              <span className="score-value">{highest_scores?.memory_match || 0}</span>
+            </div>
+          </div>
+          <div className="highest-score-card">
+            <div className="score-icon">🐝</div>
+            <div className="score-details">
+              <span className="score-label">Spelling Bee</span>
+              <span className="score-value">{highest_scores?.spelling_bee || 0}</span>
             </div>
           </div>
         </div>
@@ -154,18 +224,20 @@ const Progress = () => {
       <div className="progress-details">
         {/* Test Results Section */}
         <div className="test-results-section">
-          <h3>Test History</h3>
-          {progressData?.test_results?.length > 0 ? (
-            <div className="results-grid">
-              {progressData.test_results.map((result, index) => (
-                <div key={index} className="result-card">
-                  <div className="test-type">{result.test_type}</div>
-                  <div className="test-score">{result.score}%</div>
-                  <div className="test-date">
-                    {new Date(result.date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric'
-                    })}
+          <h3>📝 Test History</h3>
+          {test_results.length > 0 ? (
+            <div className="results-list">
+              {test_results.map((result, index) => (
+                <div key={index} className="result-item">
+                  <div className="result-header">
+                    <span className="result-type">{result.test_type}</span>
+                    <span className="result-score">{result.score.toFixed(1)}%</span>
+                  </div>
+                  <div className="result-meta">
+                    <span className="result-date">{formatDate(result.date)}</span>
+                    <span className="result-difficulty">
+                      Level: {getDifficultyLabel(result.difficulty_level)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -180,24 +252,24 @@ const Progress = () => {
 
         {/* Game Scores Section */}
         <div className="game-scores-section">
-          <h3>Game Achievements</h3>
-          {progressData?.game_scores?.length > 0 ? (
-            <div className="scores-grid">
-              {progressData.game_scores.map((score, index) => (
-                <div key={index} className="score-card">
+          <h3>🎮 Game Achievements</h3>
+          {game_scores.length > 0 ? (
+            <div className="scores-list">
+              {game_scores.map((score, index) => (
+                <div key={index} className="game-score-item">
                   <div className="game-header">
                     <span className="game-icon">{getGameIcon(score.game_type)}</span>
                     <div className="game-info">
-                      <div className="game-name">{formatGameType(score.game_type)}</div>
-                      <div className="game-level">Level {score.level}</div>
+                      <span className="game-name">{formatGameType(score.game_type)}</span>
+                      <span className="game-level">Level {score.level}</span>
                     </div>
+                    <span className="game-score">{score.score}</span>
                   </div>
-                  <div className="game-score">Score: {score.score}</div>
-                  <div className="game-date">
-                    {new Date(score.date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric'
-                    })}
+                  <div className="game-meta">
+                    <span className="game-date">{formatDate(score.date)}</span>
+                    <span className="game-difficulty">
+                      Level: {getDifficultyLabel(score.difficulty_level)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -213,24 +285,39 @@ const Progress = () => {
 
       {/* Recommendations Section */}
       <div className="recommendations">
-        <h3>AI Recommendations</h3>
+        <h3>💡 AI Recommendations</h3>
         <div className="recommendation-card">
-          <h4>🎧 Recommended Podcasts</h4>
+          <h4>Based on your progress:</h4>
           <ul>
-            <li>Dyslexia Explored - For understanding dyslexia</li>
-            <li>Reading Rocks - Fun reading exercises</li>
-            <li>Word Play - Vocabulary building</li>
-          </ul>
-        </div>
-        
-        <div className="recommendation-card">
-          <h4>💡 Learning Tips</h4>
-          <ul>
-            <li>Practice reading aloud for 15 minutes daily</li>
-            <li>Use colored overlays when reading</li>
-            <li>Break words into smaller chunks</li>
-            <li>Play word games to improve vocabulary</li>
-            <li>Take regular breaks during learning sessions</li>
+            {current_difficulty < 1.3 ? (
+              <>
+                <li>Start with simple words and short sentences</li>
+                <li>Practice daily for 15 minutes</li>
+                <li>Focus on phonics and letter sounds</li>
+                <li>Play Memory Match to build vocabulary</li>
+              </>
+            ) : current_difficulty < 1.8 ? (
+              <>
+                <li>Practice reading aloud for 15 minutes daily</li>
+                <li>Try Word Jumble to improve sentence structure</li>
+                <li>Listen carefully and repeat after audio</li>
+                <li>Take breaks during long sessions</li>
+              </>
+            ) : current_difficulty < 2.3 ? (
+              <>
+                <li>Challenge yourself with longer sentences</li>
+                <li>Use colored overlays when reading</li>
+                <li>Break complex words into smaller chunks</li>
+                <li>Practice spelling bee words daily</li>
+              </>
+            ) : (
+              <>
+                <li>Read diverse texts to expand vocabulary</li>
+                <li>Write summaries of what you read</li>
+                <li>Practice speed reading techniques</li>
+                <li>Explain concepts to others to reinforce learning</li>
+              </>
+            )}
           </ul>
         </div>
       </div>

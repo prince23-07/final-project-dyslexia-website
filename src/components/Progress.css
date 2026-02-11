@@ -6,6 +6,12 @@
   background: var(--bg-gradient);
   max-width: 1200px;
   margin: 0 auto;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .progress-container h2 {
@@ -28,7 +34,6 @@
   background: var(--card-bg);
   padding: 25px;
   border-radius: 20px;
-  text-align: center;
   box-shadow: 0 10px 30px rgba(0,0,0,0.05);
   border: 1px solid var(--border-color);
   transition: all 0.3s ease;
@@ -44,67 +49,158 @@
   margin-bottom: 20px;
   font-size: 1.3rem;
   font-weight: 700;
+  text-align: center;
 }
 
-/* Progress Circle */
-.progress-circle {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: conic-gradient(var(--primary-color) 0% 75%, var(--border-color) 75% 100%);
-  position: relative;
-  margin: 0 auto 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.progress-circle::before {
-  content: '';
-  position: absolute;
-  width: 90px;
-  height: 90px;
-  background: var(--card-bg);
-  border-radius: 50%;
-  top: 15px;
-  left: 15px;
-}
-
-.progress-value {
-  position: relative;
-  z-index: 2;
-  font-size: 2.2rem;
-  font-weight: 800;
-  color: var(--primary-color);
-}
-
-/* Skill Score */
-.skill-score {
+/* Level Display */
+.level-display {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
 }
 
-.skill-score .score {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--text-primary);
+.level-badge {
+  display: inline-block;
+  padding: 8px 20px;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 25px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-.progress-bar {
+.difficulty-bar {
   width: 100%;
   height: 10px;
-  background: var(--accent-bg);
+  background: var(--border-color);
   border-radius: 5px;
   overflow: hidden;
 }
 
-.progress-fill {
+.difficulty-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 70%, white 30%));
+  background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6);
   border-radius: 5px;
   transition: width 0.5s ease;
+}
+
+/* Stat Display */
+.stat-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--primary-color);
+  line-height: 1;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 5px;
+}
+
+.stat-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: var(--accent-bg);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  margin-top: 10px;
+}
+
+.stat-detail span:first-child {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.stat-value {
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* Highest Scores Section */
+.highest-scores-section {
+  background: var(--card-bg);
+  padding: 30px;
+  border-radius: 20px;
+  margin-bottom: 40px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+.highest-scores-section h3 {
+  color: var(--text-primary);
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.highest-scores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.highest-score-card {
+  background: var(--accent-bg);
+  padding: 20px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.highest-score-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  border-color: var(--primary-color);
+}
+
+.highest-score-card .score-icon {
+  font-size: 2rem;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary-color), #667eea);
+  border-radius: 50%;
+  color: white;
+  flex-shrink: 0;
+}
+
+.score-details {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.score-details .score-label {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.score-details .score-value {
+  color: var(--text-primary);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 /* Progress Details */
@@ -130,70 +226,109 @@
   margin-bottom: 25px;
   font-size: 1.5rem;
   font-weight: 700;
+  text-align: center;
 }
 
-.results-grid,
-.scores-grid {
+/* Results List */
+.results-list,
+.scores-list {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 5px;
 }
 
-.result-card,
-.score-card {
+.results-list::-webkit-scrollbar,
+.scores-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.results-list::-webkit-scrollbar-track,
+.scores-list::-webkit-scrollbar-track {
   background: var(--accent-bg);
-  padding: 20px;
-  border-radius: 15px;
+  border-radius: 3px;
+}
+
+.results-list::-webkit-scrollbar-thumb,
+.scores-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.results-list::-webkit-scrollbar-thumb:hover,
+.scores-list::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+.result-item,
+.game-score-item {
+  background: var(--accent-bg);
+  padding: 15px;
+  border-radius: 12px;
   border: 1px solid var(--border-color);
   transition: all 0.3s ease;
 }
 
-.result-card:hover,
-.score-card:hover {
+.result-item:hover,
+.game-score-item:hover {
   transform: translateX(5px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
-.result-card {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+.result-header,
+.game-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 15px;
+  margin-bottom: 8px;
 }
 
-.test-type {
+.result-type {
   color: var(--text-primary);
   font-weight: 600;
   text-transform: capitalize;
+  font-size: 1rem;
+}
+
+.result-score {
+  color: var(--primary-color);
+  font-weight: 700;
   font-size: 1.1rem;
 }
 
-.test-score {
-  color: var(--primary-color);
-  font-weight: 700;
-  font-size: 1.2rem;
-}
-
-.test-date {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-/* Game Score Cards */
-.score-card {
+.result-meta,
+.game-meta {
   display: flex;
-  flex-direction: column;
-  gap: 15px;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
 }
 
+.result-date,
+.game-date {
+  color: var(--text-secondary);
+}
+
+.result-difficulty,
+.game-difficulty {
+  background: rgba(139, 92, 246, 0.1);
+  padding: 3px 8px;
+  border-radius: 12px;
+  color: var(--text-secondary);
+}
+
+/* Game Score Items */
 .game-header {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
 }
 
 .game-icon {
-  font-size: 2rem;
+  font-size: 1.5rem;
 }
 
 .game-info {
@@ -203,30 +338,19 @@
 .game-name {
   color: var(--text-primary);
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1rem;
   text-transform: capitalize;
 }
 
 .game-level {
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .game-score {
   color: var(--primary-color);
   font-weight: 700;
-  font-size: 1.3rem;
-  text-align: center;
-  background: rgba(139, 92, 246, 0.1);
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-
-.game-date {
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  text-align: right;
+  font-size: 1.1rem;
 }
 
 /* Empty State */
@@ -249,6 +373,37 @@
   opacity: 0.8;
 }
 
+/* Error Message */
+.error-message {
+  text-align: center;
+  padding: 40px;
+  background: var(--card-bg);
+  border-radius: 20px;
+  border: 2px solid var(--danger-color);
+}
+
+.error-message p {
+  color: var(--danger-color);
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+}
+
+.retry-btn {
+  padding: 12px 25px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
 /* Recommendations */
 .recommendations {
   background: var(--card-bg);
@@ -269,7 +424,6 @@
   background: var(--accent-bg);
   padding: 25px;
   border-radius: 15px;
-  margin-bottom: 20px;
   border: 1px solid var(--border-color);
 }
 
@@ -295,12 +449,12 @@
 }
 
 .recommendation-card li::before {
-  content: "•";
+  content: "✓";
   color: var(--primary-color);
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   position: absolute;
   left: 0;
-  top: 4px;
+  top: 7px;
 }
 
 /* Loading State */
@@ -325,35 +479,6 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Best Scores Section */
-.best-scores {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.best-score-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  background: var(--accent-bg);
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-}
-
-.best-score-item span:first-child {
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.best-score-item span:last-child {
-  color: var(--primary-color);
-  font-weight: 700;
-  font-size: 1.1rem;
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
   .progress-container {
@@ -365,7 +490,7 @@
   }
   
   .progress-summary {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: 20px;
   }
   
@@ -373,31 +498,32 @@
     grid-template-columns: 1fr;
   }
   
-  .result-card {
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
+  .highest-scores-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
   
-  .test-date {
-    grid-column: 1;
-    grid-row: 2;
-    text-align: left;
+  .highest-score-card {
+    padding: 15px;
   }
   
-  .test-score {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    align-self: center;
+  .highest-score-card .score-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+  }
+  
+  .score-details .score-value {
+    font-size: 1.1rem;
   }
 }
 
 @media (max-width: 480px) {
-  .progress-summary {
-    grid-template-columns: 1fr;
+  .progress-container h2 {
+    font-size: 1.5rem;
   }
   
-  .summary-card {
-    padding: 20px;
+  .highest-scores-grid {
+    grid-template-columns: 1fr;
   }
   
   .test-results-section,
@@ -406,23 +532,41 @@
     padding: 20px;
   }
   
-  .progress-circle {
-    width: 100px;
-    height: 100px;
+  .result-header,
+  .game-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
   }
   
-  .progress-circle::before {
-    width: 70px;
-    height: 70px;
-    top: 15px;
-    left: 15px;
+  .result-score,
+  .game-score {
+    align-self: flex-start;
   }
   
-  .progress-value {
-    font-size: 1.8rem;
-  }
-  
-  .skill-score .score {
+  .stat-number {
     font-size: 2rem;
   }
+}
+
+/* Theme-specific adjustments */
+.theme-dark .level-badge {
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.theme-dark .highest-score-card .score-icon {
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.theme-dark .result-difficulty,
+.theme-dark .game-difficulty {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.theme-soothing .level-badge {
+  background: linear-gradient(135deg, #4a90e2, #357abd);
+}
+
+.theme-light .level-badge {
+  background: linear-gradient(135deg, #0d6efd, #0b5ed7);
 }

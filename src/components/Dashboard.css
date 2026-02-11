@@ -1,5 +1,116 @@
-/* Dashboard.css - Complete Consolidated Version */
+/* Dashboard.css - Complete with Theme Fixes and LeetCode Calendar */
 
+:root {
+  /* Soothing Theme (Default) */
+  --soothing-bg: linear-gradient(135deg, #f0f7ff, #e6f0ff);
+  --soothing-card: rgba(255, 255, 255, 0.95);
+  --soothing-text: #2c3e50;
+  --soothing-secondary: #5d6d7e;
+  --soothing-primary: #4a90e2;
+  --soothing-accent: #e3f2fd;
+  --soothing-border: rgba(74, 144, 226, 0.2);
+  --soothing-hover: rgba(74, 144, 226, 0.05);
+  --soothing-danger: #ef4444;
+  --soothing-calendar-bg: #ffffff;
+  
+  /* Light Theme */
+  --light-bg: #ffffff;
+  --light-card: #f8f9fa;
+  --light-text: #212529;
+  --light-secondary: #6c757d;
+  --light-primary: #0d6efd;
+  --light-accent: #e7f1ff;
+  --light-border: #dee2e6;
+  --light-hover: #e9ecef;
+  --light-danger: #dc3545;
+  --light-calendar-bg: #ffffff;
+  
+  /* Dark Theme */
+  --dark-bg: #1a1a2e;
+  --dark-card: #16213e;
+  --dark-text: #e2e8f0;
+  --dark-secondary: #94a3b8;
+  --dark-primary: #6366f1;
+  --dark-accent: #312e81;
+  --dark-border: #475569;
+  --dark-hover: #2d3748;
+  --dark-danger: #f87171;
+  --dark-calendar-bg: #0f172a;
+}
+
+/* Apply Themes */
+.theme-soothing {
+  --bg-gradient: var(--soothing-bg);
+  --card-bg: var(--soothing-card);
+  --text-primary: var(--soothing-text);
+  --text-secondary: var(--soothing-secondary);
+  --primary-color: var(--soothing-primary);
+  --accent-bg: var(--soothing-accent);
+  --border-color: var(--soothing-border);
+  --hover-bg: var(--soothing-hover);
+  --danger-color: var(--soothing-danger);
+  --input-bg: #ffffff;
+  --calendar-bg: var(--soothing-calendar-bg);
+  --calendar-text: var(--soothing-text);
+}
+
+.theme-light {
+  --bg-gradient: var(--light-bg);
+  --card-bg: var(--light-card);
+  --text-primary: var(--light-text);
+  --text-secondary: var(--light-secondary);
+  --primary-color: var(--light-primary);
+  --accent-bg: var(--light-accent);
+  --border-color: var(--light-border);
+  --hover-bg: var(--light-hover);
+  --danger-color: var(--light-danger);
+  --input-bg: #ffffff;
+  --calendar-bg: var(--light-calendar-bg);
+  --calendar-text: var(--light-text);
+}
+
+.theme-dark {
+  --bg-gradient: var(--dark-bg);
+  --card-bg: var(--dark-card);
+  --text-primary: var(--dark-text);
+  --text-secondary: var(--dark-secondary);
+  --primary-color: var(--dark-primary);
+  --accent-bg: var(--dark-accent);
+  --border-color: var(--dark-border);
+  --hover-bg: var(--dark-hover);
+  --danger-color: var(--dark-danger);
+  --input-bg: #1e293b;
+  --calendar-bg: var(--dark-calendar-bg);
+  --calendar-text: var(--dark-text);
+}
+
+/* Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg-gradient);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  min-height: 100vh;
+}
+
+/* App Container */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dashboard Container */
 .dashboard-container {
   padding: 20px;
   max-width: 1200px;
@@ -28,12 +139,14 @@
   margin-bottom: 10px;
   font-weight: 700;
   text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  color: white;
 }
 
 .dashboard-header p {
   font-size: 1.1rem;
   opacity: 0.9;
   font-weight: 500;
+  color: white;
 }
 
 /* Streak Section */
@@ -208,15 +321,6 @@
   color: #212529 !important;
 }
 
-/* "Not attempted" text styling */
-.score-value:empty::before,
-.score-value[data-not-attempted="true"] {
-  color: var(--text-secondary) !important;
-  opacity: 0.7;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
 /* Metrics Section */
 .metrics-section {
   background: var(--card-bg);
@@ -283,7 +387,7 @@
   margin-top: 10px;
 }
 
-/* Progress Circle for Daily Goal */
+/* Progress Circle */
 .progress-circle {
   width: 100px;
   height: 100px;
@@ -329,7 +433,7 @@
   color: var(--primary-color);
 }
 
-/* Learning Blocks Section */
+/* Blocks Section - LeetCode Style Calendar */
 .blocks-section {
   background: var(--card-bg);
   padding: 30px;
@@ -355,62 +459,95 @@
   line-height: 1.6;
 }
 
-.blocks-grid {
-  display: grid;
-  grid-template-columns: repeat(15, 1fr);
-  grid-auto-rows: 15px;
-  gap: 4px;
-  margin-bottom: 30px;
-  justify-content: center;
+.calendar-container {
+  background: var(--calendar-bg);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color);
 }
 
-.learning-block {
-  width: 100%;
+.calendar-months {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-left: 30px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.calendar-grid {
+  display: flex;
+  gap: 10px;
+}
+
+.calendar-days {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 30px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.calendar-day-label {
+  height: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.calendar-weeks {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+
+.calendar-week {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 15px;
+}
+
+.calendar-block {
+  width: 15px;
   height: 15px;
   border-radius: 3px;
   transition: transform 0.2s ease, opacity 0.2s ease;
   cursor: pointer;
 }
 
-.learning-block:hover {
+.calendar-block:hover {
   transform: scale(1.3);
   z-index: 1;
   position: relative;
   opacity: 0.9;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-.block-intensity-0 {
-  background-color: var(--border-color);
-  opacity: 0.3;
-}
-
-.block-intensity-1 {
-  background-color: #10b981;
-  opacity: 0.6;
-}
-
-.block-intensity-2 {
-  background-color: #3b82f6;
-  opacity: 0.8;
-}
-
-.block-intensity-3 {
-  background-color: #8b5cf6;
-  opacity: 1;
-}
-
-.blocks-legend {
+.calendar-legend {
   display: flex;
-  justify-content: center;
-  gap: 25px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 15px;
+  align-items: center;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+}
+
+.legend-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.legend-colors {
+  display: flex;
+  gap: 3px;
 }
 
 .legend-block {
@@ -419,10 +556,49 @@
   border-radius: 3px;
 }
 
-.legend-item span {
+.block-details {
+  background: var(--accent-bg);
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.block-details p {
+  color: var(--text-primary);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.close-details-btn {
+  background: none;
+  border: none;
   color: var(--text-secondary);
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 5px 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-details-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
 }
 
 .blocks-summary {
@@ -444,6 +620,12 @@
 .blocks-summary strong {
   color: var(--primary-color);
   font-size: 1.2rem;
+}
+
+.summary-detail {
+  color: var(--text-secondary) !important;
+  font-size: 0.9rem !important;
+  margin-top: 5px !important;
 }
 
 /* Tips Section */
@@ -507,16 +689,30 @@
   font-weight: 500;
 }
 
-/* Empty blocks styling */
-.block-intensity-0 {
-  background-color: var(--border-color) !important;
-  opacity: 0.3 !important;
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--accent-bg);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
 }
 
 /* Responsive Design */
 @media (max-width: 1024px) {
-  .blocks-grid {
-    grid-template-columns: repeat(12, 1fr);
+  .calendar-weeks {
+    overflow-x: auto;
   }
 }
 
@@ -542,15 +738,6 @@
     grid-template-columns: 1fr;
   }
   
-  .blocks-grid {
-    grid-template-columns: repeat(10, 1fr);
-    gap: 3px;
-  }
-  
-  .blocks-legend {
-    gap: 15px;
-  }
-  
   .streak-section {
     grid-template-columns: 1fr;
   }
@@ -562,15 +749,20 @@
   .tips-grid {
     grid-template-columns: 1fr;
   }
+  
+  .calendar-container {
+    padding: 15px;
+  }
+  
+  .calendar-block {
+    width: 12px;
+    height: 12px;
+  }
 }
 
 @media (max-width: 480px) {
   .scores-grid {
     grid-template-columns: 1fr;
-  }
-  
-  .blocks-grid {
-    grid-template-columns: repeat(8, 1fr);
   }
   
   .dashboard-header {
@@ -579,17 +771,6 @@
   
   .dashboard-header h1 {
     font-size: 1.5rem;
-  }
-  
-  .blocks-legend {
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  .legend-item {
-    width: 120px;
-    justify-content: space-between;
   }
   
   .progress-circle {
@@ -603,22 +784,58 @@
     top: 8px;
     left: 8px;
   }
+  
+  .calendar-block {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .calendar-days {
+    width: 25px;
+  }
 }
 
-/* Sticky sidebar adjustments for mobile */
-@media (max-width: 768px) {
-  .sidebar {
-    position: relative;
-    top: 0;
-    width: 100%;
-    height: auto;
-  }
-  
-  .content-area {
-    margin-left: 0;
-  }
-  
-  .user-info-sidebar {
-    position: relative;
-  }
+/* Theme-specific calendar block colors */
+.theme-dark .calendar-block {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.theme-dark .calendar-container {
+  background: #0f172a;
+}
+
+.theme-dark .calendar-month,
+.theme-dark .calendar-day-label,
+.theme-dark .legend-label {
+  color: #94a3b8;
+}
+
+.theme-soothing .calendar-block {
+  border: 1px solid rgba(74, 144, 226, 0.1);
+}
+
+.theme-light .calendar-block {
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Ensure text visibility in all themes */
+.theme-dark .score-value,
+.theme-dark .streak-value,
+.theme-dark .metric-value,
+.theme-dark .blocks-summary p,
+.theme-dark .block-details p,
+.theme-dark .tips-section h3,
+.theme-dark .scores-section h2,
+.theme-dark .metrics-section h2,
+.theme-dark .blocks-section h2 {
+  color: #e2e8f0 !important;
+}
+
+.theme-dark .score-label,
+.theme-dark .streak-label,
+.theme-dark .metric-description,
+.theme-dark .blocks-description,
+.theme-dark .summary-detail,
+.theme-dark .tip-card p {
+  color: #94a3b8 !important;
 }
