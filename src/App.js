@@ -10,6 +10,7 @@ import Progress from './components/Progress';
 import ForgotPassword from './components/ForgotPassword';
 import ChangePassword from './components/ChangePassword';
 import ParentDashboard from './components/ParentDashboard';
+import LearningHub from './components/LearningHub';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -37,16 +38,9 @@ function MainLayout({ children }) {
   const location = useLocation();
   const [showUserPopup, setShowUserPopup] = useState(false);
   const [theme, setTheme] = useState('soothing');
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   const isParent = user.user_type === 'parent';
   const isChild = user.user_type === 'child';
-
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     document.body.className = `theme-${theme}`;
@@ -77,6 +71,14 @@ function MainLayout({ children }) {
       visible: isParent,
       forParent: true,
       forChild: false
+    },
+    { 
+      path: '/learning-hub', 
+      label: 'Learning Hub', 
+      icon: '📚', 
+      visible: isChild,
+      forParent: false,
+      forChild: true
     },
     { 
       path: '/tests', 
@@ -298,6 +300,13 @@ function App() {
             <PrivateRoute>
               <MainLayout>
                 <Progress />
+              </MainLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/learning-hub" element={
+            <PrivateRoute>
+              <MainLayout>
+                <LearningHub />
               </MainLayout>
             </PrivateRoute>
           } />

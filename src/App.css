@@ -621,3 +621,42 @@ body {
 .theme-light .sidebar-btn {
   color: var(--light-text);
 }
+/* Add to App.css - Learning Sidebar adjustments */
+
+.content-area {
+  flex: 1;
+  margin-left: 240px;
+  padding: 20px;
+  background: var(--bg-gradient);
+  min-height: calc(100vh - 60px);
+  transition: margin-left 0.3s ease;
+}
+
+.content-area.with-learning-sidebar {
+  margin-left: 560px; /* 240px (main sidebar) + 320px (learning sidebar) */
+}
+
+/* Mobile adjustments */
+@media (max-width: 1200px) {
+  .content-area {
+    margin-left: 0;
+  }
+  
+  .content-area.with-learning-sidebar {
+    margin-left: 0;
+  }
+  
+  .sidebar {
+    z-index: 100;
+  }
+  
+  .learning-sidebar {
+    z-index: 200;
+  }
+}
+
+@media (max-width: 768px) {
+  .content-area {
+    padding: 15px;
+  }
+}
